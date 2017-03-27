@@ -59,9 +59,12 @@ adam = tf.train.AdamOptimizer(learning_rate=learning_rate)
 input_y = tf.placeholder(tf.float32, [None, 1], name='input_y')
 # 每个Action的潜在价值
 advantages = tf.placeholder(tf.float32, name='reward_signal')
-#
-#
+
+# Action取值为1的概率为probability(即策略网络的输出概率)，Action取0的概率为1-probability
+# label取值设定与Action相反，即label = 1-Action
+# loglik就是当前Action对应的概率的对数
 loglik = tf.log(input_y*(input_y - probability) + (1 - input_y)*(input_y + probability))
+# 将loglik与潜在价值advantages相乘再取负数作为损失
 loss = -tf.reduce_mean(loglik * advantages)
 
 # 所有可训练的参数
@@ -116,6 +119,7 @@ with tf.Session() as sess:
             epr = np.vstack(drs)
             xs, ys, drs = [], [], []
 
+            # 计算每一步Action的潜在价值，然后减去均值再除以标准差，得到一个零均值标准差为1的分布，有利于训练的稳定
             discounted_epr = discount_rewards(epr)
             discounted_epr -= np.mean(discounted_epr)
             discounted_epr /= np.std(discounted_epr)
@@ -138,10 +142,4 @@ with tf.Session() as sess:
                 reward_sum = 0
 
             observation = env.reset()
-
-
-
-
-
-
 
