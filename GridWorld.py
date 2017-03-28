@@ -60,7 +60,7 @@ class gameEnv():
 
         state = self.renderEnv()
         self.state = state
-        return  state
+        return state
 
 
     # 移动英雄角色
@@ -135,7 +135,7 @@ class gameEnv():
         self.moveChar(action)
         reward, done = self.checkGoal()
         state = self.renderEnv()
-        return  state, reward, done
+        return state, reward, done
 
 
 env = gameEnv(size=5)
