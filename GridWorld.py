@@ -33,7 +33,7 @@ class gameEnv():
     def __init__(self, size):
         self.sizeX = size
         self.sizeY = size
-        self.action = 4
+        self.actions = 4
         self.object = []
         a = self.reset()
         plt.imshow(a, interpolation='nearest')
@@ -115,7 +115,7 @@ class gameEnv():
                     self.objects.append(gameOb(self.newPosition(), 1, 1, 0, -1, 'fire'))
                     return other.reward, False
 
-        return 0.0,False
+        return 0.0, False
 
     # 生成环境
     def renderEnv(self):
@@ -139,3 +139,65 @@ class gameEnv():
 
 
 env = gameEnv(size=5)
+
+
+# 定义DQN
+class Qnetwork():
+    def __init__(self, h_size):
+        # 输入的是游戏环境，单个图像被扁平化: [n, 84*84*3] = [n, 21168] 需要恢复成[n, 84, 84, 3]
+        self.scalarInput = tf.placeholder(shape=[None, 21168], dtype=tf.float32)
+        self.imageIn = tf.reshape(self.scalarInput, shape=[-1, 84, 84, 3])
+        # 四层卷积
+        self.conv1 = tfc.layers.convolution2d(inputs=self.imageIn,
+                                              num_outputs=32,
+                                              kernel_size=[8,8],
+                                              stride=[4,4],
+                                              padding='VALID',
+                                              biases_initializer=None)
+        self.conv2 = tfc.layers.convolution2d(inputs=self.conv1,
+                                              num_outputs=64,
+                                              kernel_size=[4,4],
+                                              stride=[2,2],
+                                              padding='VALID',
+                                              biases_initializer=None)
+        self.conv3 = tfc.layers.convolution2d(inputs=self.conv2,
+                                              num_outputs=64,
+                                              kernel_size=[3,3],
+                                              stride=[1,1],
+                                              padding='VALID',
+                                              biases_initializer=None)
+        self.conv4 = tfc.layers.convolution2d(inputs=self.conv3,
+                                              num_outputs=512,
+                                              kernel_size=[7,7],
+                                              stride=[1,1],
+                                              padding='VALID',
+                                              biases_initializer=None)
+        # 输出切分:Action带来的价值和环境本身的价值
+        self.streamAC, self.streamVC = tf.split(self.conv4, 2, 3)
+        # 扁平化
+        self.streamA = tfc.layers.flatten(self.streamAC)
+        self.streamV = tfc.layers.flatten(self.streamVC)
+        # 线性全连接层权重
+        self.AW = tf.Variable(tf.random_normal([h_size//2, env.actions]))
+        self.VW = tf.Variable(tf.random_normal([h_size//2, 1]))
+
+        self.Advantage = tf.matmul(self.streamA, self.AW)
+        self.Value = tf.matmul(self.streamV, self.VW)
+
+        self.Qout = self.Value + tf.subtract(self.Advantage,
+                                             tf.reduce_mean(self.Advantage, reduction_indices=1, keep_dims=True)
+                                             )
+        self.predict = tf.argmax(self.Qout, 1)
+
+        self.targetQ = tf.placeholder(shape=[None], dtype=tf.float32)
+        self.actions = tf.placeholder(shape=[None], dtype=tf.int32)
+        self.action_onehot = tf.one_hot(self.actions, env.actions, dtype=tf.float32)
+        self.Q = tf.reduce_sum(tf.multiply(self.Qout, self.action_onehot), reduction_indices=1)
+
+        # 损失函数，均方差
+        self.td_error = tf.square(self.targetQ - self.Q)
+        self.loss = tf.reduce_mean(self.td_error)
+        # 优化器
+        self.trainer = tf.train.AdamOptimizer(learning_rate=0.0001)
+        self.updateModel = self.trainer.minimize(self.loss)
+
