@@ -110,10 +110,9 @@ class gameEnv():
                 self.objects.remove(other)
                 if other.reward == 1:
                     self.objects.append(gameOb(self.newPosition(), 1, 1, 1, 1, 'goal'))
-                    return other.reward, True
                 else:
                     self.objects.append(gameOb(self.newPosition(), 1, 1, 0, -1, 'fire'))
-                    return other.reward, False
+                return other.reward, False
 
         return 0.0, False
 
@@ -201,3 +200,146 @@ class Qnetwork():
         self.trainer = tf.train.AdamOptimizer(learning_rate=0.0001)
         self.updateModel = self.trainer.minimize(self.loss)
 
+# 实现Experience Replay策略
+class experience_buffer():
+    def __init__(self, buffer_size = 50000):
+        self.buffer = []
+        self.buffer_size = buffer_size
+
+    def add(self, experience):
+        if len(self.buffer) + len(experience) >= self.buffer_size:
+            self.buffer[0:(len(self.buffer) + len(experience)) - self.buffer_size] = []
+        self.buffer.extend(experience)
+
+    def sample(self, size):
+        return np.reshape(np.array(random.sample(self.buffer, size)), [size, 5])
+
+
+# 扁平化: [84,84,3] -> [21168]
+def processState(states):
+    return np.reshape(states, [21168])
+
+
+# 更新TargetDQN模型的参数
+def updateTargetGraph(tfVars, tau):
+    total_vars = len(tfVars)
+    op_holder = []
+    for idx, var in enumerate(tfVars[0:total_vars//2]):
+        op_holder.append(
+            tfVars[idx+total_vars//2].assign(
+                (var.value() * tau) +
+                ((1-tau)*tfVars[idx+total_vars//2].value())
+            )
+        )
+    return op_holder
+
+
+def updateTarget(op_holder, sess):
+    for op in op_holder:
+        sess.run(op)
+
+
+# 参数
+batch_size = 32
+update_freq = 4
+y = 0.99
+startE = 1.0
+endE = 0.1
+anneling_steps = 10000.
+num_episodes = 10000
+pre_train_steps = 10000
+max_epLength = 50
+load_model = False
+path = 'downloads/dqn'
+h_size = 512
+tau = 0.001
+
+mainQN = Qnetwork(h_size)
+targetQN = Qnetwork(h_size)
+init = tf.global_variables_initializer()
+
+trainables = tf.trainable_variables()
+targetOps = updateTargetGraph(tfVars=trainables, tau=tau)
+
+myBuffer = experience_buffer()
+
+e = startE
+stepDrop = (startE - endE)/anneling_steps
+
+rList = []
+total_steps = 0
+
+saver = tf.train.Saver()
+if not os.path.exists(path):
+    os.makedirs(path)
+
+with tf.Session() as sess:
+    if load_model == True:
+        print('Loading Model...')
+        ckpt = tf.train.get_checkpoint_state(path)
+        saver.restore(sess, ckpt.model_checkpoint_path)
+
+    sess.run(init)
+    updateTarget(targetOps, sess=sess)
+    for i in range(num_episodes + 1):
+        episodeBuffer = experience_buffer()
+        s = env.reset()
+        s = processState(s)
+        d = False
+        rAll = 0
+        j = 0
+        while j < max_epLength:
+            j+=1
+            if np.random.rand(1) < e or total_steps < pre_train_steps:
+                a = np.random.randint(0, 4)
+            else:
+                a = sess.run(mainQN.predict, feed_dict={mainQN.scalarInput:[s]})[0]
+            s1, r, d = env.step(a)
+            s1 = processState(s1)
+            total_steps += 1
+            episodeBuffer.add(np.reshape(
+                np.array([s, a, r, s1, d]), [1, 5]
+            ))
+
+            if total_steps > pre_train_steps:
+                if e > endE:
+                    e -= stepDrop
+                if total_steps % update_freq == 0:
+                    trainBatch = myBuffer.sample(batch_size)
+                    A = sess.run(
+                        mainQN.predict, feed_dict={
+                            mainQN.scalarInput:np.vstack(trainBatch[:,3])
+                        }
+                    )
+                    Q = sess.run(
+                        targetQN.Qout, feed_dict={
+                            targetQN.scalarInput:np.vstack(trainBatch[:,3])
+                        }
+                    )
+                    doubleQ = Q[range(batch_size), A]
+                    targetQ = trainBatch[:,2] + y*doubleQ
+                    _=sess.run(
+                        mainQN.updateModel,
+                        feed_dict={
+                            mainQN.scalarInput:np.vstack(trainBatch[:,0]),
+                            mainQN.targetQ:targetQ,
+                            mainQN.actions:trainBatch[:,1]
+                        }
+                    )
+                    updateTarget(targetOps, sess)
+
+            rAll += r
+            s = s1
+
+            if d is True:
+                break
+
+        myBuffer.add(episodeBuffer.buffer)
+        rList.append(rAll)
+        if i > 0 and i % 25 == 0:
+            print('episode %d , average reward of last 25 episode %.6f' % (i, np.mean(rList[-25:])))
+        if i > 0 and i % 1000 == 0:
+            saver.save(sess, path + '/model-' + str(i) + '.cptk')
+            print('Saved Model')
+
+        saver.save(sess, path + '/model-' + str(i) + '.cptk')
