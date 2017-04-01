@@ -36,7 +36,7 @@ class gameEnv():
         self.actions = 4
         self.object = []
         a = self.reset()
-        plt.imshow(a, interpolation='nearest')
+        # plt.imshow(a, interpolation='nearest')
         # plt.show()
 
 
