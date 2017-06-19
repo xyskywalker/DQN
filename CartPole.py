@@ -97,7 +97,7 @@ with tf.Session() as sess:
 
     while episode_number <= total_episodes:
         if reward_sum/batch_size > 190 or rendering == True:
-            env.render()
+            #env.render()
             rendering = True
         x = np.reshape(observation, [1, D])
 
