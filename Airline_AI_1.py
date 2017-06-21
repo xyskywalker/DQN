@@ -16,12 +16,14 @@ df = df.sort_values(by='日期', ascending=True)
 
 # 生成默认环境
 # 0航班ID，1日期(相对于基准日期的分钟)，2国内/国际，3航班号，4起飞机场，5到达机场，
-# 6起飞时间(相对于基准时间的分钟数)，7到达时间(相对于基准时间的分钟数)，8飞机ID，9机型，10重要系数(*10 取整数)
-# 11起飞故障，12降落故障，13起飞机场关闭，14降落机场关闭，15是否飞机限制，16过站时间(分钟数)
-# 17调整方法，18调整量(分钟数)
-arr_env = np.zeros([len(df), 19], dtype=np.int32)
+# 6起飞时间(相对于基准时间的分钟数)，7起飞时间(相对于当天0点的分钟数)，8到达时间(相对于基准时间的分钟数)，9到达时间(相对于当天0点的分钟数)
+# 10飞机ID，11机型，12重要系数(*10 取整数)
+# 13起飞故障，14降落故障，15起飞机场关闭(从24点开始的分钟数)，16起飞机场开放，17降落机场关闭，18降落机场开放，
+# 19是否飞机限制，20过站时间(分钟数)
+# 21调整方法，22调整量(分钟数)
+arr_env = np.zeros([len(df), 23], dtype=np.int32)
 
-# print(df)
+print(df)
 
 # 航班ID
 arr_env[:,0] = df['航班ID']
@@ -49,25 +51,27 @@ ds_days = (ds - base_date).dt.days
 ds_seconds = (ds - base_date).dt.seconds
 ds_minutes_s = (ds_days * 24 * 60) + (ds_seconds / 60)
 arr_env[:,6] = ds_minutes_s
+arr_env[:,7] = ds.dt.hour * 60 + ds.dt.minute
 
 # 到达时间
 ds = pd.to_datetime(df['到达时间'])
 ds_days = (ds - base_date).dt.days
 ds_seconds = (ds - base_date).dt.seconds
 ds_minutes_e = (ds_days * 24 * 60) + (ds_seconds / 60)
-arr_env[:,7] = ds_minutes_e
+arr_env[:,8] = ds_minutes_e
+arr_env[:,9] = ds.dt.hour * 60 + ds.dt.minute
 
 # 飞机ID
-arr_env[:,8] = df['飞机ID']
+arr_env[:,10] = df['飞机ID']
 
 # 机型
-arr_env[:,9] = df['机型']
+arr_env[:,11] = df['机型']
 
 # 重要系数
-arr_env[:,10] = df['重要系数'] * 10
+arr_env[:,12] = df['重要系数'] * 10
 
 # 过站时间
-arr_env[:,16] = ds_minutes_e - ds_minutes_s
+arr_env[:,20] = ds_minutes_e - ds_minutes_s
 
 # 测试，加入故障信息
 
@@ -81,7 +85,7 @@ def loss_airline_count(env = np.zeros([0, 19], dtype=np.int32)):
 
     return airline_count
 
-# print(arr_env)
+print(arr_env)
 
 # 网络参数
 # 隐含层节点数
