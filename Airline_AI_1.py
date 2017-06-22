@@ -12,18 +12,25 @@ airport_id_list = [0, 1, 2, 3, 4]
 f = open('航班表.csv')
 df = pd.read_csv(f)
 df = df.fillna(value=1.0)
-df = df.sort_values(by='日期', ascending=True)
+df = df.sort_values(by='航班ID', ascending=True)
+
+# 合并上后继航班
+df_merged = pd.merge(df, df,how='left' ,
+                     left_on=['日期', '国际/国内', '到达机场', '飞机ID'],
+                     right_on=['日期', '国际/国内', '起飞机场', '飞机ID'])
+
+#print(df_merged['起飞时间_y'] - df_merged['到达时间_x'])
 
 # 生成默认环境
 # 0航班ID，1日期(相对于基准日期的分钟)，2国内/国际，3航班号，4起飞机场，5到达机场，
 # 6起飞时间(相对于基准时间的分钟数)，7起飞时间(相对于当天0点的分钟数)，8到达时间(相对于基准时间的分钟数)，9到达时间(相对于当天0点的分钟数)
 # 10飞机ID，11机型，12重要系数(*10 取整数)
 # 13起飞故障，14降落故障，15起飞机场关闭(从24点开始的分钟数)，16起飞机场开放，17降落机场关闭，18降落机场开放，
-# 19是否飞机限制，20过站时间(分钟数)
-# 21调整方法，22调整量(分钟数)
-arr_env = np.zeros([len(df), 23], dtype=np.int32)
+# 19是否飞机限制，20后继航班ID，21过站时间(分钟数)
+# 22调整方法，23调整量(分钟数)
+arr_env = np.zeros([len(df), 24], dtype=np.int32)
 
-print(df)
+# print(df)
 
 # 航班ID
 arr_env[:,0] = df['航班ID']
@@ -70,8 +77,17 @@ arr_env[:,11] = df['机型']
 # 重要系数
 arr_env[:,12] = df['重要系数'] * 10
 
+# 后继航班ID
+id_next = df_merged['航班ID_y'].fillna(value=0.0)
+arr_env[:,20] = id_next
+
 # 过站时间
-arr_env[:,20] = ds_minutes_e - ds_minutes_s
+# 同一架飞机，无论是否联程航班
+ds_d = pd.to_datetime(df_merged['起飞时间_y'])
+ds_a = pd.to_datetime(df_merged['到达时间_x'])
+ds_os = (ds_d - ds_a).dt.seconds / 60
+ds_os = ds_os.fillna(value=999.0)
+arr_env[:,21] = ds_os
 
 # 测试，加入故障信息
 
