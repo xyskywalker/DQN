@@ -14,10 +14,13 @@ df = pd.read_csv(f)
 df = df.fillna(value=1.0)
 df = df.sort_values(by='航班ID', ascending=True)
 
+
 # 合并上后继航班
 df_merged = pd.merge(df, df,how='left' ,
                      left_on=['日期', '国际/国内', '到达机场', '飞机ID'],
                      right_on=['日期', '国际/国内', '起飞机场', '飞机ID'])
+
+df_env = df.copy()
 
 #print(df_merged['起飞时间_y'] - df_merged['到达时间_x'])
 
@@ -93,10 +96,66 @@ ds_os = ((ds_d - ds_a).dt.days * 24 * 60) + ((ds_d - ds_a).dt.seconds / 60)
 ds_os = ds_os.fillna(value=999.0)
 arr_env[:,22] = ds_os
 
+# 附加状态的处理
+# 故障、航线-飞机限制、机场关闭限制
+f_fault = open('故障表.csv')
+df_fault = pd.read_csv(f_fault)
+df_fault = df_fault.fillna(value=-1)
+df_fault['机场'] = df_fault['机场'].replace(airport_list, airport_id_list)
+
+ds_s = pd.to_datetime(df_fault['开始时间'])
+ds_e = pd.to_datetime(df_fault['结束时间'])
+
+ds_s_days = (ds_s - base_date).dt.days
+ds_s_seconds = (ds_s - base_date).dt.seconds
+ds_s_minutes = (ds_s_days * 24 * 60) + (ds_s_seconds / 60)
+
+ds_e_days = (ds_e - base_date).dt.days
+ds_e_seconds = (ds_e - base_date).dt.seconds
+ds_e_minutes = (ds_e_days * 24 * 60) + (ds_e_seconds / 60)
+
+df_fault['开始时间'] = ds_s_minutes
+df_fault['结束时间'] = ds_e_minutes
+
+
+print(df_fault[df_fault['开始时间']>90])
+
+
+def app_action(env = np.zeros([0, 25], dtype=np.int32), action = np.zeros([2], dtype=np.int32)):
+    for row in env:
+        # 故障航班
+        line_id = row[0] # 航班ID
+        airport_d = row[4] # 起飞机场
+        airport_a = row[5]  # 到达机场
+        time_d = row[6]  # 起飞时间
+        time_a = row[8]  # 到达时间
+        plane_id = row[10] # 飞机ID
+        # 起飞故障(起飞时间在范围内 & 故障类型=飞行 & (起飞机场相同 | 故障机场为空) & (航班ID相同 | 航班ID为空) & (飞机ID相同 | 飞机ID为空))
+        r_ = len(df_fault[((time_d >= df_fault['开始时间']) & (time_d <= df_fault['结束时间']))
+                          & (df_fault['故障类型'] == '飞行')
+                          & ((df_fault['机场'] == airport_d) | (df_fault['机场'] == -1))
+                          & ((df_fault['航班ID'] == line_id) | (df_fault['航班ID'] == -1))
+                          & ((df_fault['飞机'] == plane_id) | (df_fault['飞机'] == -1))
+                 ])
+        if r_ > 0 :
+            row[13] = 1
+
+        # 降落故障(到达时间在范围内 & 故障类型=飞行|降落 & (到达机场相同 | 故障机场为空) & (航班ID相同 | 航班ID为空) & (飞机ID相同 | 飞机ID为空))
+        r_ = len(df_fault[((time_a >= df_fault['开始时间']) & (time_a <= df_fault['结束时间']))
+                          & ((df_fault['故障类型'] == '飞行') | (df_fault['故障类型'] == '降落'))
+                          & ((df_fault['机场'] == airport_a) | (df_fault['机场'] == -1))
+                          & ((df_fault['航班ID'] == line_id) | (df_fault['航班ID'] == -1))
+                          & ((df_fault['飞机'] == plane_id) | (df_fault['飞机'] == -1))
+                 ])
+        if r_ > 0 :
+            row[14] = 1
+
+    return env
+
 # 测试，加入故障信息
 
 # 统计loss所需各航班数
-def loss_airline_count(env = np.zeros([0, 19], dtype=np.int32)):
+def loss_airline_count(env = np.zeros([0, 25], dtype=np.int32)):
     # 计算loss时所需的各调整航班数统计
     # 0航站衔接(或者同一架飞机出现在同一时间的其他航线上、联程航班必须使用同一架飞机)=10000，
     # 1航线飞机限制=10000，2机场关闭=10000，3飞机过站时间=10000
@@ -105,7 +164,8 @@ def loss_airline_count(env = np.zeros([0, 19], dtype=np.int32)):
 
     return airline_count
 
-print(arr_env)
+
+print(app_action(env=arr_env))
 
 # 网络参数
 # 隐含层节点数
@@ -113,7 +173,7 @@ H = 50
 batch_size = 25
 learning_rate = 1e-1
 # 环境信息维度
-D = 4
+D = 25
 # Reward的discount比例
 gamma = 0.99
 
