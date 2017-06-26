@@ -6,10 +6,10 @@ import pandas as pd
 import tensorflow.contrib as tfc
 import time
 
-airport_list = ['北京', '上海', '武汉', '巴黎', '伦敦']
-airport_id_list = [0, 1, 2, 3, 4]
+airport_list = ['北京', '上海', '武汉', '巴黎', '伦敦', '拉萨', '长沙', '香港', '厦门', '深圳']
+airport_id_list = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
 # 环境维度
-env_d = 29
+env_d = 35
 
 f = open('航班表.csv')
 df = pd.read_csv(f)
@@ -28,13 +28,15 @@ df_env = df.copy()
 
 # 生成默认环境
 # 0航班ID，1日期(相对于基准日期的分钟)，2国内/国际，3航班号，4起飞机场，5到达机场，
-# 6起飞时间(相对于基准时间的分钟数)，7起飞时间(相对于当天0点的分钟数)，8到达时间(相对于基准时间的分钟数)，9到达时间(相对于当天0点的分钟数)
+# 6起飞时间(相对于基准时间的分钟数)，7起飞时间(相对于0点的分钟数)，8到达时间(相对于基准时间的分钟数)，9到达时间(相对于0点的分钟数)
 # 10飞机ID，11机型，12重要系数(*10 取整数)
-# 13起飞故障，14降落故障，15起飞机场关闭(从0点开始的分钟数)，16起飞机场开放，17降落机场关闭，18降落机场开放，
-# 19是否飞机限制，20先导航班，21后继航班ID，22过站时间(分钟数)
-# 23是否取消(0-不取消，1-取消)，24改变航班绑定的飞机(0-不改变，1-改为同型号其他飞机，2-改为不同型号飞机)，
-# 25修改航班起飞时间(0-修改，1-不修改)，26联程拉直(0-不拉直，1-拉直，注：第一段设置为拉直后第二段状态为取消，或者用其他方式处理)，
-# 27调机(0-不调，1-调)，28时间调整量(分钟数)
+# 13起飞故障，14降落故障，
+# 15起飞机场关闭(相对于0点的分钟数)，16起飞机场开放(相对于0点的分钟数)，17起飞机场关闭起效日期，18起飞机场关闭失效日期，19是否起飞机场关闭
+# 20降落机场关闭(相对于0点的分钟数)，21降落机场开放(相对于0点的分钟数)，22降落机场关闭起效日期，23降落机场关闭失效日期，24是否降落机场关闭
+# 25是否飞机限制，26先导航班ID，27后继航班ID，28过站时间(分钟数)
+# 29是否取消(0-不取消，1-取消)，30改变航班绑定的飞机(0-不改变，1-改为同型号其他飞机，2-改为不同型号飞机)，
+# 31修改航班起飞时间(0-修改，1-不修改)，32联程拉直(0-不拉直，1-拉直，注：第一段设置为拉直后第二段状态为取消，或者用其他方式处理)，
+# 33调机(0-不调，1-调)，34时间调整量(分钟数)
 arr_env = np.zeros([len(df), env_d], dtype=np.int32)
 
 # print(df)
@@ -86,11 +88,11 @@ arr_env[:,12] = df['重要系数'] * 10
 
 # 先导航班ID
 id_fw = pd.merge(df[['航班ID']], df_merged[['航班ID_x', '航班ID_y']], how='left', left_on='航班ID', right_on='航班ID_y')
-arr_env[:,20] = id_fw['航班ID_x'].fillna(value=0.0)
+arr_env[:,26] = id_fw['航班ID_x'].fillna(value=0.0)
 
 # 后继航班ID
 id_next = df_merged['航班ID_y'].fillna(value=0.0)
-arr_env[:,21] = id_next
+arr_env[:,27] = id_next
 
 # 过站时间
 # 同一架飞机，无论是否联程航班
@@ -98,7 +100,7 @@ ds_d = pd.to_datetime(df_merged['起飞时间_y'])
 ds_a = pd.to_datetime(df_merged['到达时间_x'])
 ds_os = ((ds_d - ds_a).dt.days * 24 * 60) + ((ds_d - ds_a).dt.seconds / 60)
 ds_os = ds_os.fillna(value=999.0)
-arr_env[:,22] = ds_os
+arr_env[:,28] = ds_os
 
 f_fault = open('故障表.csv')
 df_fault = pd.read_csv(f_fault)
@@ -119,8 +121,30 @@ ds_e_minutes = (ds_e_days * 24 * 60) + (ds_e_seconds / 60)
 df_fault['开始时间'] = ds_s_minutes
 df_fault['结束时间'] = ds_e_minutes
 
+# 航班飞机限制表
+f_limit = open('航线-飞机限制表.csv')
+df_limit = pd.read_csv(f_limit)
+df_limit['起飞机场'] = df_limit['起飞机场'].replace(airport_list, airport_id_list)
+df_limit['到达机场'] = df_limit['到达机场'].replace(airport_list, airport_id_list)
 
-print(df_fault[df_fault['开始时间']>90])
+# 机场关闭限制表
+f_close = open('机场关闭限制表.csv')
+df_close = pd.read_csv(f_close)
+df_close['机场'] = df_close['机场'].replace(airport_list, airport_id_list)
+
+ds = pd.to_datetime(df_close['生效日期'])
+ds = (ds - base_date).dt.days
+df_close['生效日期'] = ds * 24 * 60
+ds = pd.to_datetime(df_close['失效日期'])
+ds = (ds - base_date).dt.days
+df_close['失效日期'] = ds * 24 * 60
+
+ds = pd.to_datetime(df_close['关闭时间'])
+df_close['关闭时间'] = ds.dt.hour * 60 + ds.dt.minute
+ds = pd.to_datetime(df_close['开放时间'])
+df_close['开放时间'] = ds.dt.hour * 60 + ds.dt.minute
+
+print(df_close)
 
 
 # 附加状态的处理
@@ -133,6 +157,8 @@ def app_action(env = np.zeros([0, env_d], dtype=np.int32), action = np.zeros([2]
         airport_a = row[5]  # 到达机场
         time_d = row[6]  # 起飞时间
         time_a = row[8]  # 到达时间
+        time_d_0 = row[7]  # 起飞时间，0点为基准
+        time_a_0 = row[8]  # 到达时间，0点为基准
         plane_id = row[10] # 飞机ID
         # 起飞故障(起飞时间在范围内 & 故障类型=飞行 & (起飞机场相同 | 故障机场为空) & (航班ID相同 | 航班ID为空) & (飞机ID相同 | 飞机ID为空))
         r_ = len(df_fault[((time_d >= df_fault['开始时间']) & (time_d <= df_fault['结束时间']))
@@ -153,6 +179,54 @@ def app_action(env = np.zeros([0, env_d], dtype=np.int32), action = np.zeros([2]
                  ])
         if r_ > 0 :
             row[14] = 1
+
+        # 是否航线-飞机限制
+        # 起降机场一致、飞机ID一致
+        r_ = len(df_limit[(df_limit['起飞机场'] == airport_d)
+                          & (df_limit['到达机场'] == airport_a)
+                          & (df_limit['限制飞机'] == plane_id)])
+        if r_ > 0 :
+            row[25] = 1
+
+        # 机场关闭
+        # 起飞机场关闭
+        # 起飞机场ID一致 & 起飞时间在机场关闭的生效与失效日期之内
+        rows = np.array(df_close[(df_close['机场'] == airport_d)
+                        & (time_d >= df_close['生效日期'])
+                        & (time_d <= df_close['失效日期'])])
+        for row_ in rows:
+            # 关闭和开放时间之间跨越24点的处理
+            if row_[2] < row_[1]:
+                row_[2] += 24 * 60
+
+            row[15] = row_[1]
+            row[16] = row_[2]
+            row[17] = row_[3]
+            row[18] = row_[4]
+            print(time_d_0)
+            print(row_[1])
+            print(row_[2])
+            if (time_d_0 >= row_[1]) & (time_d_0 <= row_[2]):
+
+                print('out of time')
+                row[19] = 1
+
+        # 降落机场关闭
+        # 降落机场ID一致 & 降落时间在机场关闭的生效与失效日期之内
+        rows = np.array(df_close[(df_close['机场'] == airport_a)
+                        & (time_a >= df_close['生效日期'])
+                        & (time_a <= df_close['失效日期'])])
+        for row_ in rows:
+            # 关闭和开放时间之间跨越24点的处理
+            if row_[2] < row_[1]:
+                row_[2] += 24 * 60
+
+            row[19] = row_[1]
+            row[20] = row_[2]
+            row[21] = row_[3]
+            row[22] = row_[4]
+            if (time_a_0 >= row_[1]) & (time_a_0 <= row_[2]):
+                row[24] = 1
 
     return env
 
