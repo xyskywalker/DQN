@@ -8,6 +8,8 @@ import time
 
 airport_list = ['北京', '上海', '武汉', '巴黎', '伦敦']
 airport_id_list = [0, 1, 2, 3, 4]
+# 环境维度
+env_d = 29
 
 f = open('航班表.csv')
 df = pd.read_csv(f)
@@ -28,10 +30,12 @@ df_env = df.copy()
 # 0航班ID，1日期(相对于基准日期的分钟)，2国内/国际，3航班号，4起飞机场，5到达机场，
 # 6起飞时间(相对于基准时间的分钟数)，7起飞时间(相对于当天0点的分钟数)，8到达时间(相对于基准时间的分钟数)，9到达时间(相对于当天0点的分钟数)
 # 10飞机ID，11机型，12重要系数(*10 取整数)
-# 13起飞故障，14降落故障，15起飞机场关闭(从24点开始的分钟数)，16起飞机场开放，17降落机场关闭，18降落机场开放，
+# 13起飞故障，14降落故障，15起飞机场关闭(从0点开始的分钟数)，16起飞机场开放，17降落机场关闭，18降落机场开放，
 # 19是否飞机限制，20先导航班，21后继航班ID，22过站时间(分钟数)
-# 23调整方法，24调整量(分钟数)
-arr_env = np.zeros([len(df), 25], dtype=np.int32)
+# 23是否取消(0-不取消，1-取消)，24改变航班绑定的飞机(0-不改变，1-改为同型号其他飞机，2-改为不同型号飞机)，
+# 25修改航班起飞时间(0-修改，1-不修改)，26联程拉直(0-不拉直，1-拉直，注：第一段设置为拉直后第二段状态为取消，或者用其他方式处理)，
+# 27调机(0-不调，1-调)，28时间调整量(分钟数)
+arr_env = np.zeros([len(df), env_d], dtype=np.int32)
 
 # print(df)
 
@@ -96,8 +100,6 @@ ds_os = ((ds_d - ds_a).dt.days * 24 * 60) + ((ds_d - ds_a).dt.seconds / 60)
 ds_os = ds_os.fillna(value=999.0)
 arr_env[:,22] = ds_os
 
-# 附加状态的处理
-# 故障、航线-飞机限制、机场关闭限制
 f_fault = open('故障表.csv')
 df_fault = pd.read_csv(f_fault)
 df_fault = df_fault.fillna(value=-1)
@@ -121,7 +123,9 @@ df_fault['结束时间'] = ds_e_minutes
 print(df_fault[df_fault['开始时间']>90])
 
 
-def app_action(env = np.zeros([0, 25], dtype=np.int32), action = np.zeros([2], dtype=np.int32)):
+# 附加状态的处理
+# 故障、航线-飞机限制、机场关闭限制
+def app_action(env = np.zeros([0, env_d], dtype=np.int32), action = np.zeros([2], dtype=np.int32)):
     for row in env:
         # 故障航班
         line_id = row[0] # 航班ID
