@@ -135,10 +135,6 @@ df_close['关闭时间'] = ds.dt.hour * 60 + ds.dt.minute
 ds = pd.to_datetime(df_close['开放时间'], format='%H:%M:%S')
 df_close['开放时间'] = ds.dt.hour * 60 + ds.dt.minute
 
-i_len = 0
-i_len += df_limit.groupby(['起飞机场', '降落机场']).count().max()[0]
-arr_temp = np.zeros([i_len])
-print(arr_temp)
 
 # 附加状态的处理
 # 故障、航线-飞机限制、机场关闭限制
@@ -150,7 +146,7 @@ def app_action(env = np.zeros([0, env_d], dtype=np.int32), action = np.zeros([2]
         time_d = row[6]  # 起飞时间
         time_a = row[8]  # 到达时间
         time_d_0 = row[7]  # 起飞时间，0点为基准
-        time_a_0 = row[8]  # 到达时间，0点为基准
+        time_a_0 = row[9]  # 到达时间，0点为基准
         plane_id = row[10] # 飞机ID
 
         ###############################################################################################################
