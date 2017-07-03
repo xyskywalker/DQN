@@ -6,7 +6,7 @@ import pandas as pd
 #import tensorflow.contrib as tfc
 
 # 环境维度
-env_d = 57
+env_d = 58
 
 # f = open('航班表.csv')
 # df = pd.read_csv(f)
@@ -47,6 +47,7 @@ df = df.sort_values(by='航班ID', ascending=True)
 # 55调机(0-不调，1-调)，56时间调整量(分钟数)
 #
 # 57~ 航线-飞机限制
+# 57是否航线-飞机限制
 # 动态添加，长度为 df_limit.groupby(['起飞机场', '降落机场']).count().max()
 #
 arr_env = np.zeros([len(df), env_d], dtype=np.int32)
@@ -79,6 +80,7 @@ ds_days = (ds - base_date).dt.days
 ds_seconds = (ds - base_date).dt.seconds
 ds_minutes_s = (ds_days * 24 * 60) + (ds_seconds / 60)
 arr_env[:,6] = ds_minutes_s
+df['起飞时间'] = ds_minutes_s
 arr_env[:,7] = ds.dt.hour * 60 + ds.dt.minute
 # 到达时间
 ds = pd.to_datetime(df['降落时间'])
@@ -133,11 +135,9 @@ df_close['关闭时间'] = ds.dt.hour * 60 + ds.dt.minute
 ds = pd.to_datetime(df_close['开放时间'], format='%H:%M:%S')
 df_close['开放时间'] = ds.dt.hour * 60 + ds.dt.minute
 
-
 # 附加状态的处理
 # 故障、航线-飞机限制、机场关闭限制
 def app_action(env = np.zeros([0, env_d], dtype=np.int32), action = np.zeros([2], dtype=np.int32)):
-    print(df_fault)
     for row in env:
         line_id = row[0] # 航班ID
         airport_d = row[4] # 起飞机场
@@ -225,17 +225,8 @@ def app_action(env = np.zeros([0, env_d], dtype=np.int32), action = np.zeros([2]
             row[32] = t_e
 
         ###############################################################################################################
-        # 是否航线-飞机限制
-        # 起降机场一致、飞机ID一致
-        #r_ = len(df_limit[(df_limit['起飞机场'] == airport_d)
-        #                  & (df_limit['降落机场'] == airport_a)
-        #                  & (df_limit['飞机ID'] == plane_id)])
-        #if r_ > 0 :
-        #    row[25] = 1
-
-        ###############################################################################################################
-        # 机场关闭
-        # 起飞机场关闭
+        # 33~42 机场关闭信息
+        # 33起飞机场关闭(相对于0点的分钟数)，34起飞机场开放(相对于0点的分钟数)，35起飞机场关闭起效日期，36起飞机场关闭失效日期，37是否起飞机场关闭
         # 起飞机场ID一致 & 起飞时间在机场关闭的生效与失效日期之内
         rows = np.array(df_close[(df_close['机场'] == airport_d)
                         & (time_d >= df_close['生效日期'])
@@ -245,14 +236,14 @@ def app_action(env = np.zeros([0, env_d], dtype=np.int32), action = np.zeros([2]
             if row_[2] < row_[1]:
                 row_[2] += 24 * 60
 
-            row[15] = row_[1]
-            row[16] = row_[2]
-            row[17] = row_[3]
-            row[18] = row_[4]
+            row[33] = row_[1]
+            row[34] = row_[2]
+            row[35] = row_[3]
+            row[36] = row_[4]
             if (time_d_0 >= row_[1]) & (time_d_0 <= row_[2]):
-                row[19] = 1
+                row[37] = 1
 
-        # 降落机场关闭
+        # 38降落机场关闭(相对于0点的分钟数)，39降落机场开放(相对于0点的分钟数)，40降落机场关闭起效日期，41降落机场关闭失效日期，42是否降落机场关闭
         # 降落机场ID一致 & 降落时间在机场关闭的生效与失效日期之内
         rows = np.array(df_close[(df_close['机场'] == airport_a)
                         & (time_a >= df_close['生效日期'])
@@ -262,14 +253,22 @@ def app_action(env = np.zeros([0, env_d], dtype=np.int32), action = np.zeros([2]
             if row_[2] < row_[1]:
                 row_[2] += 24 * 60
 
-            row[19] = row_[1]
-            row[20] = row_[2]
-            row[21] = row_[3]
-            row[22] = row_[4]
+            row[38] = row_[1]
+            row[39] = row_[2]
+            row[40] = row_[3]
+            row[41] = row_[4]
             if (time_a_0 >= row_[1]) & (time_a_0 <= row_[2]):
-                row[24] = 1
+                row[42] = 1
 
-    print(df_fault)
+        ###############################################################################################################
+        # 43~50 先导、后继、过站时间、联程、中转等信息
+        # 43先导航班ID，44后继航班ID，45过站时间(分钟数)、46是否联程航班，47联程航班ID
+        # 48是否有中转、49中转类型(国内-国内:0、国内-国际:1、国际-国内:2、国际-国际:3)、50中转时间限制
+        # 后继航班：飞机ID相同 起飞时间大于本航班降落时间 按起飞时间排序之后第一个航班
+        # 后继航班的先导航班即是本航班
+        r_ = df.loc[df['飞机ID'] == plane_id].copy(deep=True)
+        print(r_)
+
     return env
 
 # 测试，加入故障信息
@@ -285,7 +284,11 @@ def loss_airline_count(env = np.zeros([0, 25], dtype=np.int32)):
     return airline_count
 
 
-print(app_action(env=arr_env))
+#print(app_action(env=arr_env))
+
+r_ = df[(df['飞机ID'] == 30) & (df['起飞时间'] > 485)].sort_values(by='起飞时间', ascending=True)
+
+print(r_.loc[0])
 
 # 网络参数
 # 隐含层节点数
