@@ -6,7 +6,7 @@ import pandas as pd
 #import tensorflow.contrib as tfc
 
 # 环境维度
-env_d = 58
+env_d = 59
 
 # f = open('航班表.csv')
 # df = pd.read_csv(f)
@@ -17,8 +17,6 @@ df_excel = pd.read_excel('DATA_20170627.xlsx', sheetname=[0, 1, 2, 3, 4, 5])
 
 df = df_excel[0].fillna(value=1.0)
 df = df.sort_values(by='航班ID', ascending=True)
-
-#print(df_merged['起飞时间_y'] - df_merged['到达时间_x'])
 
 # 生成默认环境
 #
@@ -39,15 +37,15 @@ df = df.sort_values(by='航班ID', ascending=True)
 #
 # 43~50 先导、后继、过站时间、联程、中转等信息
 # 43先导航班ID，44后继航班ID，45过站时间(分钟数)、46是否联程航班，47联程航班ID
-# 48是否有中转、49中转类型(国内-国内:0、国内-国际:1、国际-国内:2、国际-国际:3)、50中转时间限制
+# 48是否有中转、49中转类型(国内-国内:0、国内-国际:1、国际-国内:2、国际-国际:3)、50中转时间限制、51对应的出港航班
 #
-# 51~56 调整方法信息
-# 51是否取消(0-不取消，1-取消)，52改变航班绑定的飞机(0-不改变，1-改为同型号其他飞机，2-改为不同型号飞机)，
-# 53修改航班起飞时间(0-不修改，1-延误、2-提前)，54联程拉直(0-不拉直，1-拉直，注：第一段设置为拉直后第二段状态为取消，或者用其他方式处理)，
-# 55调机(0-不调，1-调)，56时间调整量(分钟数)
+# 52~57 调整方法信息
+# 52是否取消(0-不取消，1-取消)，53改变航班绑定的飞机(0-不改变，1-改为同型号其他飞机，2-改为不同型号飞机)，
+# 54修改航班起飞时间(0-不修改，1-延误、2-提前)，55联程拉直(0-不拉直，1-拉直，注：第一段设置为拉直后第二段状态为取消，或者用其他方式处理)，
+# 56调机(0-不调，1-调)，57时间调整量(分钟数)
 #
-# 57~ 航线-飞机限制
-# 57是否航线-飞机限制
+# 58~ 航线-飞机限制
+# 58是否航线-飞机限制
 # 动态添加，长度为 df_limit.groupby(['起飞机场', '降落机场']).count().max()
 #
 arr_env = np.zeros([len(df), env_d], dtype=np.int32)
@@ -66,7 +64,9 @@ ds = pd.to_datetime(df['日期'])
 # 基准日期
 base_date = df['日期'].min()
 ds = (ds - base_date).dt.days
-arr_env[:,1] = ds * 24 * 60
+days_minutes = ds * 24 * 60
+arr_env[:,1] = days_minutes
+df['日期'] = days_minutes
 # 国际=0/国内=1
 arr_env[:,2] = df['国际/国内'].replace(['国际', '国内'], [0, 1])
 # 航班号
@@ -88,6 +88,7 @@ ds_days = (ds - base_date).dt.days
 ds_seconds = (ds - base_date).dt.seconds
 ds_minutes_e = (ds_days * 24 * 60) + (ds_seconds / 60)
 arr_env[:,8] = ds_minutes_e
+df['降落时间'] = ds_minutes_e
 arr_env[:,9] = ds.dt.hour * 60 + ds.dt.minute
 # 飞机ID
 arr_env[:,10] = df['飞机ID']
@@ -137,7 +138,7 @@ df_close['开放时间'] = ds.dt.hour * 60 + ds.dt.minute
 
 # 附加状态的处理
 # 故障、航线-飞机限制、机场关闭限制
-def app_action(env = np.zeros([0, env_d], dtype=np.int32), action = np.zeros([2], dtype=np.int32)):
+def app_action(env = np.zeros([0, env_d], dtype=np.int32)):
     for row in env:
         line_id = row[0] # 航班ID
         airport_d = row[4] # 起飞机场
@@ -262,12 +263,39 @@ def app_action(env = np.zeros([0, env_d], dtype=np.int32), action = np.zeros([2]
 
         ###############################################################################################################
         # 43~50 先导、后继、过站时间、联程、中转等信息
-        # 43先导航班ID，44后继航班ID，45过站时间(分钟数)、46是否联程航班，47联程航班ID
-        # 48是否有中转、49中转类型(国内-国内:0、国内-国际:1、国际-国内:2、国际-国际:3)、50中转时间限制
+        #
+        # 43先导航班ID，44后继航班ID，45过站时间(分钟数)
         # 后继航班：飞机ID相同 起飞时间大于本航班降落时间 按起飞时间排序之后第一个航班
-        # 后继航班的先导航班即是本航班
-        r_ = df.loc[df['飞机ID'] == plane_id].copy(deep=True)
-        print(r_)
+        r_ = df[(df['飞机ID'] == plane_id) & (df['起飞时间'] > time_d)].sort_values(by='起飞时间', ascending=True)
+        if len(r_) > 0:
+            # 本航班的后继航班
+            next_id = r_.iloc[0][0]
+            row[44] = next_id
+            # 本航班的到达时间
+            time_a_ = row[8]
+            # 后继航班的先导航班即是本航班
+            row_next = env[next_id - 1]
+            row_next[43] = row[0]
+            # 后继航班的起飞时间
+            time_d_ = row_next[6]
+            # 过站时间
+            row[45] = time_d_ - time_a_
+
+            # 联程航班: 日期与航班号相同
+            # 46是否联程航班，47联程航班ID
+            if (row[1] == row_next[1]) & (row[3] == row_next[3]) :
+                row[46] = 1
+                # 联程航班第一段的ID就是后继航班ID
+                row[47] = next_id
+                # 联程航班第二段
+                row_next[46] = 1
+                row_next[47] = row[0]
+
+            # 中转航班信息: 添加在有中转的进港航班上
+            # 48是否有中转(0非中转、1中转)
+            # 49中转类型(国内-国内:0、国内-国际:1、国际-国内:2、国际-国际:3)
+            # 50中转时间限制
+            # 51对应的出港航班
 
     return env
 
@@ -284,11 +312,7 @@ def loss_airline_count(env = np.zeros([0, 25], dtype=np.int32)):
     return airline_count
 
 
-#print(app_action(env=arr_env))
-
-r_ = df[(df['飞机ID'] == 30) & (df['起飞时间'] > 485)].sort_values(by='起飞时间', ascending=True)
-
-print(r_.loc[0])
+print(app_action(env=arr_env))
 
 # 网络参数
 # 隐含层节点数
