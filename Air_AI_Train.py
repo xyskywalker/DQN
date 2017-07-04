@@ -312,7 +312,13 @@ def loss_airline_count(env = np.zeros([0, 25], dtype=np.int32)):
     return airline_count
 
 
-print(app_action(env=arr_env))
+#print(app_action(env=arr_env))
+
+r_ = df[df['飞机ID'] == 30].sort_values(by='起飞时间', ascending=True).reset_index()
+
+r_c = r_[r_['航班ID'] == 223].index[0]
+
+print(r_c)
 
 # 网络参数
 # 隐含层节点数
