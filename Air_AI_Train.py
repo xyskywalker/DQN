@@ -4,7 +4,7 @@ import numpy as np
 #import matplotlib.pyplot as plt
 import pandas as pd
 #import tensorflow.contrib as tfc
-
+import datetime
 # 环境维度
 env_d = 59
 
@@ -12,12 +12,53 @@ env_d = 59
 # df = pd.read_csv(f)
 # df = df.fillna(value=1.0)
 # df = df.sort_values(by='航班ID', ascending=True)
-
+print(datetime.datetime.now())
 df_excel = pd.read_excel('DATA_20170627.xlsx', sheetname=[0, 1, 2, 3, 4, 5])
 
 df = df_excel[0].fillna(value=1.0)
 df = df.sort_values(by='航班ID', ascending=True)
 
+########################################################################################################################
+# 基准日期
+base_date = df['日期'].min()
+# 故障表
+df_fault = df_excel[5]
+df_fault = df_fault.fillna(value=-1)
+
+ds_s = pd.to_datetime(df_fault['开始时间'])
+ds_e = pd.to_datetime(df_fault['结束时间'])
+
+ds_s_days = (ds_s - base_date).dt.days
+ds_s_seconds = (ds_s - base_date).dt.seconds
+ds_s_minutes = (ds_s_days * 24 * 60) + (ds_s_seconds / 60)
+
+ds_e_days = (ds_e - base_date).dt.days
+ds_e_seconds = (ds_e - base_date).dt.seconds
+ds_e_minutes = (ds_e_days * 24 * 60) + (ds_e_seconds / 60)
+
+df_fault['开始时间'] = ds_s_minutes
+df_fault['结束时间'] = ds_e_minutes
+# 增加一个 已停机数 字段
+df_fault['已停机数'] = 0.0
+
+# 航班飞机限制表
+df_limit = df_excel[1]
+
+# 机场关闭限制表
+df_close = df_excel[2]
+ds = pd.to_datetime(df_close['生效日期'])
+ds = (ds - base_date).dt.days
+df_close['生效日期'] = ds * 24 * 60
+ds = pd.to_datetime(df_close['失效日期'])
+ds = (ds - base_date).dt.days
+df_close['失效日期'] = ds * 24 * 60
+
+ds = pd.to_datetime(df_close['关闭时间'], format='%H:%M:%S')
+df_close['关闭时间'] = ds.dt.hour * 60 + ds.dt.minute
+ds = pd.to_datetime(df_close['开放时间'], format='%H:%M:%S')
+df_close['开放时间'] = ds.dt.hour * 60 + ds.dt.minute
+
+print(datetime.datetime.now())
 # 生成默认环境
 #
 # 0~12 基本信息
@@ -48,7 +89,10 @@ df = df.sort_values(by='航班ID', ascending=True)
 # 58是否航线-飞机限制
 # 动态添加，长度为 df_limit.groupby(['起飞机场', '降落机场']).count().max()
 #
-arr_env = np.zeros([len(df), env_d], dtype=np.int32)
+
+limit_len = df_limit.groupby(['起飞机场', '降落机场']).count().max()[0]
+
+arr_env = np.zeros([len(df), env_d + limit_len], dtype=np.int32)
 
 # print(df)
 
@@ -61,8 +105,6 @@ arr_env = np.zeros([len(df), env_d], dtype=np.int32)
 arr_env[:,0] = df['航班ID']
 # 日期
 ds = pd.to_datetime(df['日期'])
-# 基准日期
-base_date = df['日期'].min()
 ds = (ds - base_date).dt.days
 days_minutes = ds * 24 * 60
 arr_env[:,1] = days_minutes
@@ -96,46 +138,8 @@ arr_env[:,10] = df['飞机ID']
 arr_env[:,11] = df['机型']
 # 重要系数
 arr_env[:,12] = df['重要系数'] * 10
-########################################################################################################################
 
-# 故障表
-df_fault = df_excel[5]
-df_fault = df_fault.fillna(value=-1)
-
-ds_s = pd.to_datetime(df_fault['开始时间'])
-ds_e = pd.to_datetime(df_fault['结束时间'])
-
-ds_s_days = (ds_s - base_date).dt.days
-ds_s_seconds = (ds_s - base_date).dt.seconds
-ds_s_minutes = (ds_s_days * 24 * 60) + (ds_s_seconds / 60)
-
-ds_e_days = (ds_e - base_date).dt.days
-ds_e_seconds = (ds_e - base_date).dt.seconds
-ds_e_minutes = (ds_e_days * 24 * 60) + (ds_e_seconds / 60)
-
-df_fault['开始时间'] = ds_s_minutes
-df_fault['结束时间'] = ds_e_minutes
-# 增加一个 已停机数 字段
-df_fault['已停机数'] = 0.0
-
-
-# 航班飞机限制表
-df_limit = df_excel[1]
-
-# 机场关闭限制表
-df_close = df_excel[2]
-ds = pd.to_datetime(df_close['生效日期'])
-ds = (ds - base_date).dt.days
-df_close['生效日期'] = ds * 24 * 60
-ds = pd.to_datetime(df_close['失效日期'])
-ds = (ds - base_date).dt.days
-df_close['失效日期'] = ds * 24 * 60
-
-ds = pd.to_datetime(df_close['关闭时间'], format='%H:%M:%S')
-df_close['关闭时间'] = ds.dt.hour * 60 + ds.dt.minute
-ds = pd.to_datetime(df_close['开放时间'], format='%H:%M:%S')
-df_close['开放时间'] = ds.dt.hour * 60 + ds.dt.minute
-
+print(datetime.datetime.now())
 # 附加状态的处理
 # 故障、航线-飞机限制、机场关闭限制
 def app_action(env = np.zeros([0, env_d], dtype=np.int32)):
@@ -291,11 +295,22 @@ def app_action(env = np.zeros([0, env_d], dtype=np.int32)):
                 row_next[46] = 1
                 row_next[47] = row[0]
 
-            # 中转航班信息: 添加在有中转的进港航班上
-            # 48是否有中转(0非中转、1中转)
-            # 49中转类型(国内-国内:0、国内-国际:1、国际-国内:2、国际-国际:3)
-            # 50中转时间限制
-            # 51对应的出港航班
+        ###############################################################################################################
+        # 中转航班信息: 添加在有中转的进港航班上
+        # 48是否有中转(0非中转、1中转)
+        # 49中转类型(国内-国内:0、国内-国际:1、国际-国内:2、国际-国际:3)
+        # 50中转时间限制
+        # 51对应的出港航班
+
+        ###############################################################################################################
+        # 58~ 航线-飞机限制
+        # 58是否航线-飞机限制(0不限制，1限制)
+        # 动态添加，长度为 df_limit.groupby(['起飞机场', '降落机场']).count().max()
+        arr_limit = np.array(df_limit[(df_limit['起飞机场'] == airport_d)
+                                      & (df_limit['降落机场'] == airport_a)]['飞机ID'])
+        if plane_id in arr_limit:
+            row[58] = 1
+        row[59: 59 + len(arr_limit)] = arr_limit
 
     return env
 
@@ -312,13 +327,16 @@ def loss_airline_count(env = np.zeros([0, 25], dtype=np.int32)):
     return airline_count
 
 
-#print(app_action(env=arr_env))
+print(app_action(env=arr_env)[0,58:])
 
+print(datetime.datetime.now())
 r_ = df[df['飞机ID'] == 30].sort_values(by='起飞时间', ascending=True).reset_index()
 
 r_c = r_[r_['航班ID'] == 223].index[0]
 
 print(r_c)
+
+print(datetime.datetime.now())
 
 # 网络参数
 # 隐含层节点数
