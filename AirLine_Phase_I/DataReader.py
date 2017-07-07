@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import datetime
 
-
 class DataReader():
 
     def __init__(self, filename='', env_d=0):
@@ -303,10 +302,5 @@ class DataReader():
 
         return env_
 
-reader = DataReader(filename='DATA_20170705.xlsx' , env_d=59)
-print(reader.read())
-
-# r_ = self.df[self.df['飞机ID'] == 30].sort_values(by='起飞时间', ascending=True).reset_index()
-# r_c = r_[r_['航班ID'] == 223].index[0]
-# print(r_c)
-# print(datetime.datetime.now())
+# reader = DataReader(filename='DATA_20170705.xlsx' , env_d=59)
+# print(reader.read())
