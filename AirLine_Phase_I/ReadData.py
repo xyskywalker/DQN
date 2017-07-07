@@ -1,4 +1,3 @@
-# coding:utf-8
 import numpy as np
 #import tensorflow as tf
 #import matplotlib.pyplot as plt
@@ -12,8 +11,8 @@ env_d = 59
 # df = pd.read_csv(f)
 # df = df.fillna(value=1.0)
 # df = df.sort_values(by='航班ID', ascending=True)
-print(datetime.datetime.now())
-df_excel = pd.read_excel('DATA_20170705.xlsx', sheetname=[0, 1, 2, 3, 4, 5])
+print(datetime.datetime.now(), ' Start...')
+df_excel = pd.read_excel('DATA_20170705.xlsx', sheetname=[0, 1, 2, 3, 4])
 
 df = df_excel[0].fillna(value=1.0)
 df = df.sort_values(by='航班ID', ascending=True)
@@ -58,7 +57,10 @@ df_close['关闭时间'] = ds.dt.hour * 60 + ds.dt.minute
 ds = pd.to_datetime(df_close['开放时间'], format='%H:%M:%S')
 df_close['开放时间'] = ds.dt.hour * 60 + ds.dt.minute
 
-print(datetime.datetime.now())
+# 飞行时间表
+df_flytime = df_excel[4]
+
+print(datetime.datetime.now(), 'End - Load Data')
 # 生成默认环境
 #
 # 0~12 基本信息
@@ -139,7 +141,7 @@ arr_env[:,11] = df['机型']
 # 重要系数
 arr_env[:,12] = df['重要系数'] * 10
 
-print(datetime.datetime.now())
+print(datetime.datetime.now(), 'End - BASIC Data')
 # 附加状态的处理
 # 故障、航线-飞机限制、机场关闭限制
 def app_action(env = np.zeros([0, env_d], dtype=np.int32)):
@@ -159,7 +161,7 @@ def app_action(env = np.zeros([0, env_d], dtype=np.int32)):
         #
         # 13、14、15起飞机场故障(状态、开始时间、结束时间):起飞时间在范围内 & 故障类型=飞行 & 起飞机场相同
         r_ = df_fault[((time_d >= df_fault['开始时间']) & (time_d <= df_fault['结束时间']))
-                          & (df_fault['故障类型'] == '飞行')
+                          & (df_fault['影响类型'] == '起飞')
                           & (airport_d == df_fault['机场'])]
         if len(r_) > 0 :
             t_s = r_['开始时间'].min()
@@ -170,7 +172,7 @@ def app_action(env = np.zeros([0, env_d], dtype=np.int32)):
 
         # 16、17、18降落机场故障(状态、开始时间、结束时间):降落时间在范围内 & (故障类型=飞行|降落) & 降落机场相同
         r_ = df_fault[((time_a >= df_fault['开始时间']) & (time_a <= df_fault['结束时间']))
-                          & ((df_fault['故障类型'] == '飞行') | (df_fault['故障类型'] == '降落'))
+                          & (df_fault['影响类型'] == '降落')
                           & (airport_a == df_fault['机场'])]
         if len(r_) > 0 :
             t_s = r_['开始时间'].min()
@@ -179,34 +181,17 @@ def app_action(env = np.zeros([0, env_d], dtype=np.int32)):
             row[17] = t_s
             row[18] = t_e
 
-        #19、20、21航班故障(状态、开始时间、结束时间):起飞时间在范围内 & 故障类型=飞行 & 航班ID相同
-        r_ = df_fault[((time_d >= df_fault['开始时间']) & (time_d <= df_fault['结束时间']))
-                      & (df_fault['故障类型'] == '飞行') & (df_fault['航班ID'] == line_id)]
-        if len(r_) > 0:
-            t_s = r_['开始时间'].min()
-            t_e = r_['结束时间'].max()
-            row[19] = 1
-            row[20] = t_s
-            row[21] = t_e
-
+        # 19、20、21航班故障(状态、开始时间、结束时间):起飞时间在范围内 & 故障类型=飞行 & 航班ID相同
         # 22、23、24飞机故障(状态、开始时间、结束时间):起飞时间在范围内 & 故障类型=飞行 & 飞机ID相同
-        r_ = df_fault[((time_d >= df_fault['开始时间']) & (time_d <= df_fault['结束时间']))
-                      & (df_fault['故障类型'] == '飞行') & (df_fault['飞机'] == plane_id)]
-        if len(r_) > 0:
-            t_s = r_['开始时间'].min()
-            t_e = r_['结束时间'].max()
-            row[22] = 1
-            row[23] = t_s
-            row[24] = t_e
 
         # 25、26、27、28起飞机场停机限制(状态、停机限制数量、开始时间、结束时间):起飞时间在范围内 & 故障类型=停机 & 起飞机场相同
         r_ = df_fault[((time_d >= df_fault['开始时间']) & (time_d <= df_fault['结束时间']))
-                      & (df_fault['故障类型'] == '停机') & (airport_d == df_fault['机场'])]
+                      & (df_fault['影响类型'] == '停机') & (airport_d == df_fault['机场'])]
 
         if len(r_) > 0:
             df_fault.loc[r_.index, ['已停机数']] += 1
 
-            p_num = r_['停机数'].min()
+            p_num = 0
             t_s = r_['开始时间'].min()
             t_e = r_['结束时间'].max()
             row[25] = 1
@@ -216,12 +201,12 @@ def app_action(env = np.zeros([0, env_d], dtype=np.int32)):
 
         # 29、30、31、32降落机场停机限制(状态、停机限制数量、开始时间、结束时间):降落时间在范围内 & 故障类型=停机 & 降落机场相同
         r_ = df_fault[((time_a >= df_fault['开始时间']) & (time_a <= df_fault['结束时间']))
-                          & (df_fault['故障类型'] == '停机') & (airport_a == df_fault['机场'])]
+                          & (df_fault['影响类型'] == '停机') & (airport_a == df_fault['机场'])]
 
         if len(r_) > 0:
             df_fault.loc[r_.index, ['已停机数']] += 1
 
-            p_num = r_['停机数'].min()
+            p_num = 0
             t_s = r_['开始时间'].min()
             t_e = r_['结束时间'].max()
             row[29] = 1
@@ -314,38 +299,11 @@ def app_action(env = np.zeros([0, env_d], dtype=np.int32)):
 
     return env
 
-# 测试，加入故障信息
+print(app_action(env=arr_env))
 
-# 统计loss所需各航班数
-def loss_airline_count(env = np.zeros([0, 25], dtype=np.int32)):
-    # 计算loss时所需的各调整航班数统计
-    # 0航站衔接(或者同一架飞机出现在同一时间的其他航线上、联程航班必须使用同一架飞机)=10000，
-    # 1航线飞机限制=10000，2机场关闭=10000，3飞机过站时间=10000
-    #
-    airline_count = np.zeros([10], dtype=np.int32)
+print(datetime.datetime.now(), 'End - Att Data')
 
-    return airline_count
-
-
-print(app_action(env=arr_env)[0,58:])
-
-print(datetime.datetime.now())
-r_ = df[df['飞机ID'] == 30].sort_values(by='起飞时间', ascending=True).reset_index()
-
-r_c = r_[r_['航班ID'] == 223].index[0]
-
-print(r_c)
-
-print(datetime.datetime.now())
-
-# 网络参数
-# 隐含层节点数
-H = 50
-batch_size = 25
-learning_rate = 1e-1
-# 环境信息维度
-D = 25
-# Reward的discount比例
-gamma = 0.99
-
-
+# r_ = df[df['飞机ID'] == 30].sort_values(by='起飞时间', ascending=True).reset_index()
+# r_c = r_[r_['航班ID'] == 223].index[0]
+# print(r_c)
+# print(datetime.datetime.now())
