@@ -85,10 +85,11 @@ class DataReader():
         # 56调机(0-不调，1-调)，57时间调整量(分钟数)
         #
         # 58~ 硬约束状态
-        # 58航站衔接，59航线-飞机限制，60机场关闭，61飞机过站时间，62台风场景，63边界禁止调整
+        # 58航站衔接，59航线-飞机限制，60机场关闭，61飞机过站时间，62台风场景，63边界禁止调整-最早，64边界禁止调整-最晚
+        # 65是否是边际航班-最早，66是否是边际航班-最晚
         #
-        # 64~ 航线-飞机限制
-        # 64是否航线-飞机限制
+        # 67~ 航线-飞机限制
+        # 67是否航线-飞机限制
         # 动态添加，长度为 self.df_limit.groupby(['起飞机场', '降落机场']).count().max()
         #
 
@@ -164,11 +165,11 @@ class DataReader():
 
     # 附加状态的处理
     # 故障、航线-飞机限制、机场关闭限制
-    def app_action(self, env = np.zeros([0, 0], dtype=np.int32)):
+    def app_action(self):
         # 故障计数，即默认环境中需要被调整处理掉的数据
         fault_count_ = 0
         print(datetime.datetime.now(), 'Start - Att Data')
-        for row in env:
+        for row in self.arr_env:
             line_id = row[0] # 航班ID
             airport_d = row[4] # 起飞机场
             airport_a = row[5]  # 到达机场
@@ -198,7 +199,7 @@ class DataReader():
                 # 本航班的到达时间
                 time_a_ = row[8]
                 # 后继航班的先导航班即是本航班
-                row_next = env[next_id - 1]
+                row_next = self.arr_env[next_id - 1]
                 row_next[43] = row[0]
                 # 后继航班的起飞时间
                 time_d_ = row_next[6]
@@ -316,22 +317,42 @@ class DataReader():
             # 51对应的出港航班
 
             ###############################################################################################################
-            # 64~ 航线-飞机限制
-            # 64是否航线-飞机限制(0不限制，1限制)
+            # 65是否是边际航班-最早，66是否是边际航班-最晚
+            r_f_ = self.df_first[self.df_first['航班ID'] == line_id]
+            r_l_ = self.df_last[self.df_last['航班ID'] == line_id]
+            if len(r_f_) > 0:
+                row[65] = 1
+            if len(r_l_) > 0:
+                row[66] = 1
+
+            ###############################################################################################################
+            # 67~ 航线-飞机限制
+            # 67是否航线-飞机限制(0不限制，1限制)
             # 动态添加，长度为 self.df_limit.groupby(['起飞机场', '降落机场']).count().max()
             arr_limit = np.array(self.df_limit[(self.df_limit['起飞机场'] == airport_d)
                                           & (self.df_limit['降落机场'] == airport_a)]['飞机ID'])
             if plane_id in arr_limit:
-                row[64] = 1
-            row[65: 65 + len(arr_limit)] = arr_limit
+                row[67] = 1
+            row[68: 68 + len(arr_limit)] = arr_limit
 
         print(datetime.datetime.now(), 'End - Att Data')
-        return env, fault_count_
+        return fault_count_
 
-    def read(self):
-        env_, fault_count_ = self.app_action(self.arr_env)
+    def read(self, is_save = False, filename = ''):
+        fault_count_ = self.app_action()
 
-        return env_, fault_count_
+        if is_save:
+            np.save(filename, [self.arr_env , fault_count_])
+
+        return self.arr_env, fault_count_
+
+
+    def read_fromfile(self, filename):
+        data_ = np.load(filename)
+        self.arr_env = data_[0]
+        fault_count_ = data_[1]
+
+        return self.arr_env, fault_count_
 
 # reader = DataReader(filename='DATA_20170705.xlsx' , env_d=59)
 # print(reader.read())
