@@ -104,6 +104,94 @@ class Environment():
 
         return self.env, self.action_log, self.action_count, end
 
+    # 硬约束检测函数
+    # checktype: 0航站衔接、1航线-飞机限制、2机场关闭、3过站时间、4故障/台风、5边界禁止
+    def check_hard_constraint(self, row1, row2 = np.zeros([1]), checktype = 0):
+        have_hard_constraint = False
+        if checktype == 0:  # 航站衔接
+            # 前一个航班的到达机场不等于后一个航班的起飞机场
+            if row1[5] != row2[4]:
+                # 航站衔接有问题，如果之前已经航站衔接fault那么不加，否则fault+1
+                if row1[58] == 0:
+                    self.fault += 1
+                    self.loss_val[0] = self.fault
+                    row1[58] = 1
+                have_hard_constraint = True
+            else:
+                # 航站衔接正常了，那么检测之前是否不正常，如果由之前的不正常变成正常了，fault需要-1
+                if row1[58] == 1:
+                    self.fault -= 1
+                    self.loss_val[0] = self.fault
+                    row1[58] = 0
+        elif checktype == 1:    # 航线飞机限制
+            limit_ = row1[68:]
+            if row1[10] in limit_:
+                # 航线飞机限制，如果之前已经fault那么不加，否则fault+1
+                if row1[59] == 0:
+                    self.fault += 1
+                    self.loss_val[0] = self.fault
+                    row1[59] = 1
+                have_hard_constraint = True
+            else:
+                # 航线飞机限制正常了，那么检测之前是否不正常，如果由之前的不正常变成正常了，fault需要-1
+                if row1[59] == 1:
+                    self.fault -= 1
+                    self.loss_val[0] = self.fault
+                    row1[59] = 0
+        elif checktype == 2:    # 机场关闭
+            time_d_0 = row1[7]  # 起飞时间，0点为基准
+            time_a_0 = row1[9]  # 到达时间，0点为基准
+            # 起飞机场
+            if (time_d_0 > row1[33]) & (time_d_0 < row1[34]):
+                if row1[37] == 0:
+                    self.fault += 1
+                    self.loss_val[0] = self.fault
+                    row1[37] = 1
+                have_hard_constraint = True
+            else:
+                if row1[37] == 1:
+                    self.fault -= 1
+                    self.loss_val[0] = self.fault
+                    row1[37] = 0
+            # 降落机场
+            if (time_a_0 > row1[38]) & (time_a_0 < row1[39]):
+                if row1[42] == 0:
+                    self.fault += 1
+                    self.loss_val[0] = self.fault
+                    row1[42] = 1
+                have_hard_constraint = True
+            else:
+                if row1[42] == 1:
+                    self.fault -= 1
+                    self.loss_val[0] = self.fault
+                    row1[42] = 0
+        elif checktype == 3:    # 过站时间
+            if row1[45] < 50:
+                if row1[58] == 0:
+                    self.fault += 1
+                    self.loss_val[0] = self.fault
+                    row1[58] = 1
+                have_hard_constraint = True
+            else:
+                # 过站时间正常了，之前如果为不正常，那么fault-1
+                if row1[58] == 1:
+                    self.fault -= 1
+                    self.loss_val[0] = self.fault
+                    row1[58] = 0
+        elif checktype == 4:    # 故障/台风
+            time_d = row1[6]  # 起飞时间
+            time_a = row1[8]  # 到达时间
+            next_time_d = row2[6]   # 后一个航班的到达时间
+            # 起飞故障
+
+            # 降落故障
+
+            # 停机故障
+
+
+        return have_hard_constraint
+
+
     # 动作处理：取消航班
     # lineID: 需要取消的航班ID
     # 本航班取消，动作日志表添加记录
@@ -239,7 +327,11 @@ class Environment():
                 old_row_next[43] = old_row_pre[0]
                 # 过站时间更新
                 old_row_pre[45] = old_row_next[6] - old_row_pre[8]
-                # 检测航站衔接
+
+                ########################################################################################################
+                # 硬约束检测
+                # 本步骤不会变化的硬约束：机场关闭、过站时间、故障/台风
+                # 本步骤需要检测的硬约束：航站衔接
                 if old_row_pre[5] != old_row_next[4]:
                     # 航站衔接有问题，如果之前已经航站衔接fault那么不加，否则fault+1
                     if old_row_pre[58] == 0:
@@ -270,14 +362,33 @@ class Environment():
                     row[43] = new_id_pre
                     # 更新先导航班的过站时间
                     pass_time = row[6] - new_row_pre[8]
+                    # 更新过站时间
+                    new_row_pre[45] = pass_time
+
+                    ####################################################################################################
+                    # 硬约束检测
+                    # 本步骤不会变化的硬约束：机场关闭、故障/台风
+                    # 本步骤需要检测的硬约束：航站衔接、过站时间
+
+                    # 航站衔接，如果之前已经违反了那么不加1，否则fault+1
+
                     # 违反过站时间硬约束，如果之前已经违反了那么不加1，否则fault+1
                     if pass_time < 50:
                         if new_row_pre[58] == 0:
                             self.fault += 1
                             self.loss_val[0] = self.fault
                             new_row_pre[58] = 1
-                    # 更新过站时间
-                    new_row_pre[45] = pass_time
+                    else:
+                        # 过站时间正常了，之前如果为不正常，那么fault-1
+                        if new_row_pre[58] == 1:
+                            self.fault -= 1
+                            self.loss_val[0] = self.fault
+                            new_row_pre[58] = 0
+
+                    #
+                    # 硬约束检测结束
+                    ####################################################################################################
+
 
                     # 是否存在后继航班
                     if new_id_next > 0:
