@@ -69,7 +69,6 @@ class Environment():
         # 动作计数器
         self.action_count = 0
 
-
     # 环境重置
     def reset(self):
         self.env = self.default_env.copy()
@@ -79,7 +78,6 @@ class Environment():
         self.max_emptyflights_count = 0
         self.action_log = np.zeros([self.max_actions, 9])
         self.action_count = 0
-
 
     # action
     # 0: Line ID
@@ -120,7 +118,7 @@ class Environment():
     # 7边界机场一致性约束-最早起飞机场、8边界机场一致性约束-最晚降落机场
     def check_hard_constraint(self, row1, row2 = np.zeros([0]), checktype = 0):
         have_hard_constraint = False
-        # 航站衔接
+        # 0 航站衔接
         if checktype == 0:
             # 前一个航班的到达机场不等于后一个航班的起飞机场(并且不是最晚的边界航班)
             if (row1[5] != row2[4]) & (row1[66] != 1):
@@ -136,7 +134,8 @@ class Environment():
                     self.fault -= 1
                     self.loss_val[0] = self.fault
                     row1[58] = 0
-        # 航线飞机限制
+
+        # 1 航线飞机限制
         elif checktype == 1:
             limit_ = row1[68:]
             if row1[10] in limit_:
@@ -152,7 +151,8 @@ class Environment():
                     self.fault -= 1
                     self.loss_val[0] = self.fault
                     row1[59] = 0
-        # 机场关闭
+
+        # 2 机场关闭
         elif checktype == 2:
             time_d_0 = row1[7]  # 起飞时间，0点为基准
             time_a_0 = row1[9]  # 到达时间，0点为基准
@@ -186,7 +186,8 @@ class Environment():
                     self.fault -= 1
                     self.loss_val[0] = self.fault
                     row1[42] = 0
-        # 过站时间
+
+        # 3 过站时间
         elif checktype == 3:
             # 过站时间小于50分钟并且不为最晚的边界航班
             if (row1[45] < 50) & (row1[66] != 1):
@@ -213,7 +214,8 @@ class Environment():
                     self.fault -= 1
                     self.loss_val[0] = self.fault
                     row1[61] = 0
-        # 故障/台风
+
+        # 4 故障/台风
         elif checktype == 4:
             time_d = row1[6]  # 起飞时间
             time_a = row1[8]  # 到达时间
@@ -263,7 +265,8 @@ class Environment():
                     self.fault -= 1
                     self.loss_val[0] = self.fault
                     row1[29] = 0
-        # 边界禁止-最早
+
+        # 5 边界禁止-最早
         elif checktype == 5:
             # 边界约束-最早
             if row1[65] == 1:
@@ -277,7 +280,8 @@ class Environment():
                     self.fault -= 1
                     self.loss_val[0] = self.fault
                     row1[63] = 0
-        # 边界禁止-最晚
+
+        # 6 边界禁止-最晚
         elif checktype == 6:
             # 边界约束-最晚
             if row1[66] == 1:
@@ -291,7 +295,8 @@ class Environment():
                     self.fault -= 1
                     self.loss_val[0] = self.fault
                     row1[64] = 0
-        # 边界机场一致性约束-最早起飞机场
+
+        # 7 边界机场一致性约束-最早起飞机场
         elif checktype == 7:
             # 最早的边界航班飞机起飞机场必须与该飞机最初环境中最早起飞机场一致
             plane_id = row1[10]
@@ -312,7 +317,8 @@ class Environment():
                     self.fault -= 1
                     self.loss_val[0] = self.fault
                     row1[63] = 0
-        # 边界机场一致性约束-最晚降落机场
+
+        # 8 边界机场一致性约束-最晚降落机场
         elif checktype == 8:
             # 最晚的边界航班飞机降落机场必须与该飞机最初环境中最晚降落机场一致
             plane_id = row1[10] # 飞机ID
@@ -714,7 +720,6 @@ class Environment():
                 # 飞机ID
                 log[5] = new_planeID
                 return 1
-
 
     # 动作处理：调机(新增一个空飞航班，仅针对国内航班)
     # airport_d: 起飞机场
