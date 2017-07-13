@@ -335,24 +335,32 @@ class DataReader():
                 row[67] = 1
             row[68: 68 + len(arr_limit)] = arr_limit
 
+        ###############################################################################################################
+        # 获取特殊过站时间表(即初始环境下过站时间就小于50分钟的航班)
+        df_special_passtime = pd.DataFrame(self.arr_env)
+        df_special_passtime = df_special_passtime[(df_special_passtime[45] < 50)
+                                              & (df_special_passtime[44] != 0)][[0, 44, 45]]
+        df_special_passtime.columns = ['航班ID', '后继航班ID', '过站时间']
+
         print(datetime.datetime.now(), 'End - Att Data')
-        return fault_count_
+        return fault_count_, df_special_passtime
 
     def read(self, is_save = False, filename = ''):
-        fault_count_ = self.app_action()
+        fault_count_, df_special_passtime = self.app_action()
 
         if is_save:
-            np.save(filename, [self.arr_env , fault_count_])
+            np.save(filename, [self.arr_env , fault_count_, df_special_passtime])
 
-        return self.arr_env, fault_count_
+        return self.arr_env, fault_count_, df_special_passtime
 
 
     def read_fromfile(self, filename):
         data_ = np.load(filename)
         self.arr_env = data_[0]
         fault_count_ = data_[1]
+        df_special_passtime = data_[2]
 
-        return self.arr_env, fault_count_
+        return self.arr_env, fault_count_, df_special_passtime
 
 # reader = DataReader(filename='DATA_20170705.xlsx' , env_d=59)
 # print(reader.read())

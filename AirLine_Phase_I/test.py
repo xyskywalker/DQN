@@ -17,11 +17,11 @@ loss_para = np.array([100000, 50, 10, 10, 7.5, 1, 1.5] ,dtype=np.float32)
 
 reader = DataReader(filename='DATA_20170705.xlsx' , env_d=68)
 
-env, fault = reader.read_fromfile(filename='env.npy')
+env, fault, df_special_passtime = reader.read_fromfile(filename='env.npy')
 
-envObj = Environment(reader.arr_env, 1000, 100, fault,
+envObj = Environment(reader.arr_env, 68, 1000, 100, fault,
                      reader.df_fault, reader.df_limit, reader.df_close, reader.df_flytime,
-                     reader.base_date, reader.df_plane_type, reader.df_first, reader.df_last)
+                     reader.base_date, reader.df_plane_type, reader.df_first, reader.df_last, df_special_passtime)
 
 #print(reader.arr_env[10])
 
@@ -46,9 +46,10 @@ print('action_count: ', envObj.action_count)
 #envObj.reset()
 #envObj.show()
 
-# print(datetime.datetime.now(), 'Start - Read')
-# print(reader.read(is_save = True, filename='env.npy'))
-# print(datetime.datetime.now(), 'End - Read')
+
+#print(datetime.datetime.now(), 'Start - Read')
+#print(reader.read(is_save = True, filename='env.npy'))
+#print(datetime.datetime.now(), 'End - Read')
 
 #arr1 = np.random.randint(low=1, high=10, size=[5, 3])
 #df = pd.DataFrame(arr1)
