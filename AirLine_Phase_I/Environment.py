@@ -462,7 +462,7 @@ class Environment():
             if row[2] == 0:
                 time_diff_l = self.time_diff_l_0
 
-            if self.check_hard_constraint(row, checktype=1) | (time_diff > time_diff_e) | (time_diff < time_diff_e):
+            if self.check_hard_constraint(row, checktype=1) | (time_diff > time_diff_e) | (time_diff < time_diff_l):
                 return -1
             else:
                 #######################################################################################################
