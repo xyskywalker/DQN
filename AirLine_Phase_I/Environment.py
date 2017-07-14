@@ -831,13 +831,13 @@ class Environment():
     # 在原先飞机序列上插入这个新航班
     # 重算先导后继，过站时间
     # 暂时保留的硬约束：
-    #   航站衔接、机场关闭、过站时间、故障/台风、边界禁止
+    #   航站衔接、机场关闭、过站时间、故障/台风
     # 直接退出的硬约束：
-    #   航线-飞机限制
+    #   NA
     # 不存在的硬约束:
     #   NA
     # 不退出也不处理的情况：
-    #   调机仅限国内航班
+    #   边界禁止、航线-飞机限制、调机仅限国内航班
     def do_action_emptyflights(self, airport_d, airport_a, time_d, time_a, planeID):
         return 1
 
