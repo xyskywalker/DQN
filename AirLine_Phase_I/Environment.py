@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import datetime
 
 
 class Environment():
@@ -21,7 +22,7 @@ class Environment():
         # 飞行时间表
         self.df_flytime = df_flytime
         # 基准日期
-        self.base_date = base_date
+        self.base_date = base_date.to_pydatetime()
         # 飞机-类型表
         self.df_plane_type = df_plane_type
         # 边界表-最早起飞
@@ -82,6 +83,11 @@ class Environment():
         self.max_emptyflights_count = 0
         self.action_log = np.zeros([self.max_actions, 9])
         self.action_count = 0
+
+    # 通过相对于基准日期的分钟数获取相对于当天0点的分钟数
+    def get_minutes_0(self, minutes_basedate):
+        dt = self.base_date + datetime.timedelta(minutes=minutes_basedate)
+        return dt.hour * 60 + dt.minute
 
     # action
     # 0: Line ID
@@ -360,7 +366,6 @@ class Environment():
 
         return have_hard_constraint
 
-
     # 动作处理：取消航班
     # lineID: 需要取消的航班ID
     # 本航班取消，动作日志表添加记录
@@ -485,15 +490,12 @@ class Environment():
             # 更新起降时间
             # 飞行时间
             flytime = row[8] - row[6]
-            # 由于系统用了两个起降时间，分别是与基准日期的差值和与当天0天的差值，分别计算这两组时间的差异
-            basetime_diff_d = row[6] - row[7]
-            basetime_diff_a = row[8] - row[9]
             # 新的起飞时间
             row[6] += time_d
-            row[7] = row[6] - basetime_diff_d
+            row[7] = self.get_minutes_0(row[6])
             # 新的降落时间
             row[8] += time_d + flytime
-            row[9] = row[8] - basetime_diff_a
+            row[9] = self.get_minutes_0(row[8])
             # 更新飞机ID和类型
             row[10] = new_planeID
             row[11] = plane_type
@@ -825,8 +827,7 @@ class Environment():
     # 动作处理：调机(新增一个空飞航班，仅针对国内航班)
     # airport_d: 起飞机场
     # airport_a: 到达机场
-    # time_d: 起飞时间
-    # time_a: 到达时间
+    # time_d: 起飞时间(与BaseDate的差值(分钟数))
     # planeID: 飞机ID
     # 在原先飞机序列上插入这个新航班
     # 重算先导后继，过站时间
@@ -837,8 +838,57 @@ class Environment():
     # 不存在的硬约束:
     #   NA
     # 不退出也不处理的情况：
-    #   边界禁止、航线-飞机限制、调机仅限国内航班
-    def do_action_emptyflights(self, airport_d, airport_a, time_d, time_a, planeID):
+    #   边界禁止、航线-飞机限制、调机仅限国内航班、不在飞行时间表内
+    def do_action_emptyflights(self, airport_d, airport_a, time_d, planeID):
+        # 构造空行
+        row_temp = np.zeros([self.env_d])
+        # 调机的航班ID，从9001开始
+        row_temp[0] = 9001 + self.max_emptyflights_count
+        # 国内
+        row_temp[2] = 1
+        # 起飞机场
+        row_temp[4] = airport_d
+        # 到底机场
+        row_temp[5] = airport_a
+        # 航线-飞机限制表构造
+        arr_limit = np.array(self.df_limit[(self.df_limit['起飞机场'] == airport_d)
+                                           & (self.df_limit['降落机场'] == airport_a)]['飞机ID'])
+
+        row_temp[68: 68 + len(arr_limit)] = arr_limit
+
+        # 航班-飞机限制
+        check_ = self.check_hard_constraint(row_temp, checktype=1) is False
+
+        # 获取飞机类型
+        r_ = self.df_plane_type[self.df_plane_type['飞机ID'] == planeID]
+        if len(r_) > 0:
+            plane_type = r_.iloc[0][1]
+            # 飞机ID
+            row_temp[10] = planeID
+            # 飞机类型
+            row_temp[11] = plane_type
+
+        else:
+            check_ = False
+
+        # 查找飞行时间表
+        r_ = self.df_flytime[(self.df_flytime['飞机机型'] == row_temp[11])
+                             & (self.df_flytime['起飞机场'] == row_temp[4])
+                             & (self.df_flytime['降落机场'] == row_temp[5])]
+        if len(r_) > 0:
+            # 飞行时间
+            flytime = r_.iloc[0][3]
+            # 起飞时间
+            row_temp[6] = time_d
+            # 降落时间
+            row_temp[8] = time_d + flytime
+            # 起飞时间-相对当天0点的时间
+            row_temp[7] = self.get_minutes_0(row_temp[6])
+            # 降落时间-相对当天0点的时间
+            row_temp[9] = self.get_minutes_0(row_temp[8])
+        else:
+            check_ = False
+
         return 1
 
     # 调整时间
@@ -875,15 +925,12 @@ class Environment():
             row_next = self.env[row[44] - 1]
             # 飞行时间
             flytime = (row[8] - row[6])
-            # 由于系统用了两个起降时间，分别是与基准日期的差值和与当天0天的差值，分别计算这两组时间的差异
-            basetime_diff_d = row[6] - row[7]
-            basetime_diff_a = row[8] - row[9]
             # 新的起飞时间
             row[6] += time_d
-            row[7] = row[6] - basetime_diff_d
+            row[7] = self.get_minutes_0(row[6])
             # 新的降落时间
             row[8] += time_d + flytime
-            row[9] = row[8] - basetime_diff_a
+            row[9] = self.get_minutes_0(row[8])
             # 更新过站时间
             row[45] = row_next[6] - row[8]
 
@@ -989,15 +1036,12 @@ class Environment():
             if len(r_) > 0:
                 flytime = r_.iloc[0][3]
 
-            # 由于系统用了两个起降时间，分别是与基准日期的差值和与当天0天的差值，分别计算这两组时间的差异
-            basetime_diff_d = row[6] - row[7]
-            basetime_diff_a = row[8] - row[9]
             # 新的起飞时间
             row[6] += time_d
-            row[7] = row[6] - basetime_diff_d
+            row[7] = self.get_minutes_0(row[6])
             # 新的降落时间
             row[8] += time_d + flytime
-            row[9] = row[8] - basetime_diff_a
+            row[9] = self.get_minutes_0(row[8])
             # 更新过站时间
             row[45] = row_next[6] - row[8]
 

@@ -331,9 +331,10 @@ class DataReader():
             # 动态添加，长度为 self.df_limit.groupby(['起飞机场', '降落机场']).count().max()
             arr_limit = np.array(self.df_limit[(self.df_limit['起飞机场'] == airport_d)
                                           & (self.df_limit['降落机场'] == airport_a)]['飞机ID'])
+
+            row[68: 68 + len(arr_limit)] = arr_limit
             if plane_id in arr_limit:
                 row[67] = 1
-            row[68: 68 + len(arr_limit)] = arr_limit
 
         ###############################################################################################################
         # 获取特殊过站时间表(即初始环境下过站时间就小于50分钟的航班)
