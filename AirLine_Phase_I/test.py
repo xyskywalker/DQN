@@ -34,7 +34,7 @@ print(datetime.datetime.now(), 'End - Action')
 
 
 print(datetime.datetime.now(), 'Start - Action')
-action = np.array([11, 2, 0, 0, 3365, 0, 55])
+action = np.array([11, 2, 0, 0, 30, 0, 55])
 envObj.step(action=action)
 print(datetime.datetime.now(), 'End - Action')
 
