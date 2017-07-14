@@ -3,7 +3,7 @@ import pandas as pd
 
 
 class Environment():
-    def __init__(self, env, env_d, max_actions, max_emptyflights, init_fault,
+    def __init__(self, env, max_actions, max_emptyflights, init_fault,
                  df_fault, df_limit, df_close, df_flytime, base_date, df_plane_type, df_first, df_last, df_special_passtime):
         self.default_env = env
         self.env = self.default_env.copy()
@@ -11,7 +11,7 @@ class Environment():
         self.fault = self.default_fault
 
         # 环境维度
-        self.env_d = env_d
+        self.env_d = self.env.shape[1]
         # 故障表
         self.df_fault = df_fault
         # 航线-飞机限制表
@@ -46,12 +46,16 @@ class Environment():
         # 4, 7.5:联程拉直
         # 5, 1:延误
         # 6, 1.5:提前
-        self.loss_val = np.zeros([7])
+        self.loss_val = np.zeros([7], dtype=np.float32)
         self.loss_val[0] = self.fault
 
         # 最大允许调机的数量
         self.max_emptyflights = max_emptyflights
         self.max_emptyflights_count = 0
+
+        # 环境中增加空的位置用于容纳可能的调机航班
+        tempArr = np.zeros([self.max_emptyflights, self.env_d], dtype=np.int32)
+        self.env = np.row_stack((self.env, tempArr))
 
         # 最大允许动作数量
         self.max_actions = max_actions
@@ -65,7 +69,7 @@ class Environment():
         # 6:是否取消
         # 7:是否拉直
         # 8:是否调机
-        self.action_log = np.zeros([self.max_actions, 9])
+        self.action_log = np.zeros([self.max_actions, 9], dtype=np.int32)
         # 动作计数器
         self.action_count = 0
 
@@ -91,25 +95,39 @@ class Environment():
         # 结束标识
         end = False
 
-        # 处理不同的action type
-        action_type = action[1]
-        return_count = 0
-        if action_type == 0:
-            return_count = self.do_action_emptyflights(action[0])
-        elif action_type == 1:
-            return_count = self.do_action_cancel(action[0])
-        elif action_type == 2:
-            return_count = self.do_action_flightchange(action[0], action[6], action[4])
-
-        if return_count == -1:
-            # 触发了立即退出的硬约束
+        # 达到最大操作数限制时结束
+        if self.action_count >= self.max_actions - 2:
             end = True
         else:
-            # 操作计数+1
-            self.action_count += return_count
-            # 达到最大操作数限制时结束
-            if self.action_count >= self.max_actions - 2:
+            # 处理不同的action type
+            action_type = action[1]
+            return_count = 0
+            # 调机
+            if action_type == 0:
+                return_count = self.do_action_emptyflights(airport_d=action[2]
+                                                           , airport_a=action[3]
+                                                           , time_d=action[4]
+                                                           , time_a=action[5]
+                                                           , planeID=action[6])
+            # 取消
+            elif action_type == 1:
+                return_count = self.do_action_cancel(lineID=action[0])
+            # 换飞机
+            elif action_type == 2:
+                return_count = self.do_action_flightchange(lineID=action[0], new_planeID=action[6], time_d=action[4])
+            # 调整时间
+            elif action_type == 3:
+                return_count = self.do_action_changetime(lineID=action[0], time_d=action[4])
+            # 联程拉直
+            elif action_type == 4:
+                return_count = self.do_action_flightstraighten(lineID=action[0], time_d=action[4])
+
+            if return_count == -1:
+                # 触发了立即退出的硬约束
                 end = True
+            else:
+                # 操作计数+1
+                self.action_count += return_count
 
         return self.env, self.action_log, self.action_count, end
 
@@ -355,50 +373,54 @@ class Environment():
     # 不存在的硬约束:
     #   机场关闭、过站时间、故障/台风、航线-飞机限制
     # 不退出也不处理的情况：
-    #   已经取消过、做过其他调整的:换飞机、调整时间、联程拉直
+    #   已经取消过、做过其他调整的:换飞机、调整时间
     def do_action_cancel(self, lineID):
         # 处理的航班
         row = self.env[lineID - 1]
 
         # 检测是否边界约束-最早
         f_ = self.check_hard_constraint(row, checktype=5)
-        # 检测是否边界约束-最晚
-        l_ = self.check_hard_constraint(row, checktype=6)
+        # 检测是否边界约束-最晚(联程拉直导致的第二段取消时不检查是否是最晚的边际航班)
+        l_ = self.check_hard_constraint(row, checktype=6) & (row[55] == 0)
 
         if f_ | l_:
             return -1
         else:
             # 不退出也不处理的情况：
             #   已经取消过
-            #   做过其他调整的:换飞机、调整时间、联程拉直
-            if (row[52] == 1) | (row[53] != 0) | (row[54] != 0)| (row[55] != 0):
+            #   做过其他调整的:换飞机、调整时间，由于联程拉直需要取消的第二段无论之前有没有调整过都要取消
+            if ((row[52] == 1) | (row[53] != 0) | (row[54] != 0)) & (row[55] == 0):
                 return 1
             else:
                 # 取消标记
                 row[52] = 1
-                # ***因为取消航班有边界约束，所以能够被取消的航班必定有先导和后继
+                # ***因为取消航班有边界约束，所以能够被取消的航班必定有先导和后继（联程拉直导致取消第二段除外）
                 # 先导航班：
                 row_pre = self.env[row[43] - 1]
-                # 后继航班：
-                row_next = self.env[row[44] - 1]
-                # 先导航班的后继航班变成本航班的后继航班
-                row_pre[44] = row_next[0]
-                # 后继航班的先导变成本航班的先导航班
-                row_next[43] = row_pre[0]
-                # 过站时间更新
-                row_pre[45] = row_next[6] - row_pre[8]
+                # 后继航班存在的情况下处理(联程拉直导致的第二段取消也不做任何处理)：
+                if (row[44] > 0) & (row[55] == 0):
+                    row_next = self.env[row[44] - 1]
+                    # 先导航班的后继航班变成本航班的后继航班
+                    row_pre[44] = row_next[0]
+                    # 后继航班的先导变成本航班的先导航班
+                    row_next[43] = row_pre[0]
+                    # 过站时间更新
+                    row_pre[45] = row_next[6] - row_pre[8]
+                    ####################################################################################################
+                    # 硬约束检测
+                    # 航站衔接
+                    self.check_hard_constraint(row1=row_pre, row2=row_next, checktype=0)
 
-                # 取消航班数+1*重要系数
-                self.loss_val[2] += 1 * row[12]
                 # action 日志更新
                 log = self.action_log[self.action_count]
                 log[0] = lineID
                 log[6] = 1
-
-                ########################################################################################################
-                # 硬约束检测
-                # 航站衔接
-                self.check_hard_constraint(row1=row_pre, row2=row_next, checktype=0)
+                # 联程拉直标记
+                if row[55] == 1:
+                    log[7] = 1
+                else:
+                    # 取消航班数+1*重要系数(联程拉直不做取消统计)
+                    self.loss_val[2] += 1 * row[12]
 
                 return 1
 
@@ -478,6 +500,11 @@ class Environment():
 
             ######更新联程航班另一段的飞机信息(起降时间暂不修改)######
             if is_connecting_flight:
+                # 设置换飞机状态标记
+                if connecting_flight_row[11] != plane_type:
+                    connecting_flight_row[53] = 2
+                else:
+                    connecting_flight_row[53] = 1
                 # 更新飞机ID和类型
                 connecting_flight_row[10] = new_planeID
                 connecting_flight_row[11] = plane_type
@@ -596,7 +623,7 @@ class Environment():
                 #######################################################################################################
                 # 处理本航班，相当于在其他飞机的航班链条上插入本航班
                 # 先将本航班的先导后继以及边际标志都清空
-                if is_connecting_flight == False:
+                if is_connecting_flight is False:
                     row[43] = row[44] = row[45] = 0
                 else:
                     # 联程航班第一段
@@ -783,6 +810,9 @@ class Environment():
                 log[5] = new_planeID
                 # 如果是联程航班那么要多加一条
                 if is_connecting_flight:
+                    # 换飞机航班数+1*重要系数 (只有机型发生变化才会记录loss)
+                    if connecting_flight_row[53] == 2:
+                        self.loss_val[3] += 1 * connecting_flight_row[12]
                     log = self.action_log[self.action_count]
                     # 航班ID
                     log[0] = connecting_flight_row[0]
@@ -820,13 +850,75 @@ class Environment():
     # 暂时保留的硬约束：
     #   机场关闭、过站时间、故障/台风
     # 直接退出的硬约束：
-    #   提前、延误时间限制
+    #   NA
     # 不存在的硬约束:
     #   航线-飞机限制、航站衔接、边界禁止
     # 不退出也不处理的情况：
-    #   提前仅限国内航班
+    #   提前仅限国内航班、提前、延误时间限制
     def do_action_changetime(self, lineID, time_d):
-        return 1
+        row = self.env[lineID - 1]
+        # 提前最多6小时(仅限国内航班)
+        time_diff_e = self.time_diff_e
+        # 延误最多24小时(国内)36小时(国际)
+        time_diff_l = self.time_diff_l_1
+        if row[2] == 0:
+            # 国际航班不允许提前
+            time_diff_e = 0
+            time_diff_l = self.time_diff_l_0
+
+        if (time_d < time_diff_e) | (time_d > time_diff_l) | (time_d == 0):
+            return 1
+        else:
+            # 更新起降时间
+            # 重算起飞降落时间
+            # 后继航班
+            row_next = self.env[row[44] - 1]
+            # 飞行时间
+            flytime = (row[8] - row[6])
+            # 由于系统用了两个起降时间，分别是与基准日期的差值和与当天0天的差值，分别计算这两组时间的差异
+            basetime_diff_d = row[6] - row[7]
+            basetime_diff_a = row[8] - row[9]
+            # 新的起飞时间
+            row[6] += time_d
+            row[7] = row[6] - basetime_diff_d
+            # 新的降落时间
+            row[8] += time_d + flytime
+            row[9] = row[8] - basetime_diff_a
+            # 更新过站时间
+            row[45] = row_next[6] - row[8]
+
+            # 时间调整标记
+            if time_d < 0:
+                row[54] = 2
+            else:
+                row[54] = 1
+            ############################################################################################################
+            # 重算第一段的相关硬约束
+            # 暂时保留的硬约束：
+            #   机场关闭、过站时间、故障/台风
+            # 不存在的硬约束:
+            #   航线-飞机限制、航站衔接、边界禁止
+            # 过站时间
+            self.check_hard_constraint(row1=row, row2=row_next, checktype=3)
+            # 故障/台风(停机)
+            self.check_hard_constraint(row1=row, row2=row_next, checktype=4)
+            # 机场关闭
+            self.check_hard_constraint(row1=row, checktype=2)
+            #
+            ############################################################################################################
+
+            # 调整时间(小时数)*重要系数
+            self.loss_val[4] += (abs(time_d) / 60.0) * row[12]
+            # action 日志更新
+            log = self.action_log[self.action_count]
+            # 航班ID
+            log[0] = row[0]
+            # 起飞时间
+            log[3] = row[6]
+            # 降落时间
+            log[4] = row[8]
+
+            return 1
 
     # 联程拉直
     # lineID: 航班ID
@@ -839,13 +931,116 @@ class Environment():
     # 暂时保留的硬约束：
     #   机场关闭、过站时间、故障/台风
     # 直接退出的硬约束：
-    #   提前、延误时间限制
+    #   NA
     # 不存在的硬约束:
     #   航线-飞机限制、航站衔接、边界禁止
     # 不退出也不处理的情况：
-    #   拉直仅限两段都是国内航班，仅限中间机场发生故障时方可拉直
+    #   不是联程航班；提前、延误时间限制；拉直仅限两段都是国内航班，仅限中间机场发生故障时方可拉直；做过其他处理；
     def do_action_flightstraighten(self, lineID, time_d):
-        return 1
+        # 处理的航班
+        row = self.env[lineID - 1]
+        connecting_flight_row = self.env[row[44] - 1]
+        is_connecting_flight = False
+        # 保留原先的lineID
+        lineID_old = lineID
+        if row[46] == 1:
+            is_connecting_flight = True
+            if row[47] == row[43]:
+                # 如果联程航班是本航班的先导航班，那么lineID移动到先导航班
+                lineID = row[43]
+                connecting_flight_row = row
+                row = self.env[lineID - 1]
+
+        ################################################################################################################
+        # 不退出也不处理的情况：
+        #   不是联程航班；提前、延误时间限制；拉直仅限两段都是国内航班，仅限中间机场发生故障时方可拉直；做过其他处理；
+        # 不是联程航班
+        check_ = is_connecting_flight is False
+        # 是国际航班
+        check_ = check_ | ((row[2] == 0) | (connecting_flight_row[2] == 0))
+        # 做过其他处理: 取消
+        check_ = check_ | ((row[52] == 1) | (connecting_flight_row[52] == 1))
+        # 提前、延误时间超限
+        check_ = check_ | ((time_d < self.time_diff_e) | (time_d > self.time_diff_l_1))
+        # 中间机场没有发生故障
+        check_ = check_ | ((row[16] == 0) & (row[29] == 0)
+                           & (connecting_flight_row[13] == 0) & (connecting_flight_row[25] == 0))
+        if check_ is False:
+            # 先导航班没有影响
+            # 更新后继航班(直接连接上联程第二段的后继航班)
+            row[44] = connecting_flight_row[44]
+            # 降落机场=联程第二段的降落机场
+            row[5] = connecting_flight_row[5]
+            # 后继航班
+            row_next = self.env[row[44] - 1]
+            # 后继航班的先导航班变成联程中的第一段
+            row_next[43] = row[0]
+
+            # 重要系数，取两段中最大的一个
+            rate = max((row[12], connecting_flight_row[12]))
+
+            # 重算起飞降落时间
+            # 飞行时间(默认取两段飞行时间之和)
+            flytime = (row[8] - row[6]) + (connecting_flight_row[8] - connecting_flight_row[6])
+            # 查找飞行时间表
+            r_ = self.df_flytime[(self.df_flytime['飞机机型'] == row[11])
+                                 & (self.df_flytime['起飞机场'] == row[4])
+                                 & (self.df_flytime['降落机场'] == row[5])]
+            if len(r_) > 0:
+                flytime = r_.iloc[0][3]
+
+            # 由于系统用了两个起降时间，分别是与基准日期的差值和与当天0天的差值，分别计算这两组时间的差异
+            basetime_diff_d = row[6] - row[7]
+            basetime_diff_a = row[8] - row[9]
+            # 新的起飞时间
+            row[6] += time_d
+            row[7] = row[6] - basetime_diff_d
+            # 新的降落时间
+            row[8] += time_d + flytime
+            row[9] = row[8] - basetime_diff_a
+            # 更新过站时间
+            row[45] = row_next[6] - row[8]
+
+            # 航班拉直状态标记
+            row[55] = 1
+            connecting_flight_row[55] = 1
+            # 先取消掉第二段
+            self.do_action_cancel(connecting_flight_row[0])
+            self.action_count += 1
+
+            ############################################################################################################
+            # 重算第一段的相关硬约束
+            ## 暂时保留的硬约束：
+            #   机场关闭、过站时间、故障/台风
+            # 不存在的硬约束:
+            #   航线-飞机限制、航站衔接、边界禁止
+
+            # 过站时间
+            self.check_hard_constraint(row1=row, row2=row_next, checktype=3)
+            # 故障/台风(停机)
+            self.check_hard_constraint(row1=row, row2=row_next, checktype=4)
+            # 机场关闭
+            self.check_hard_constraint(row1=row, checktype=2)
+            #
+            ############################################################################################################
+
+            # 拉直航班数+1*重要系数
+            self.loss_val[4] += 1 * rate
+            # action 日志更新
+            log = self.action_log[self.action_count]
+            # 航班ID
+            log[0] = row[0]
+            # 起飞时间
+            log[3] = row[6]
+            # 降落时间
+            log[4] = row[8]
+            # 是否拉直
+            log[7] = 1
+
+            return 1
+        else:
+            # 直接退出
+            return 1
 
 
     def show(self):

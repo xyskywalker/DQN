@@ -19,29 +19,48 @@ reader = DataReader(filename='DATA_20170705.xlsx' , env_d=68)
 
 env, fault, df_special_passtime = reader.read_fromfile(filename='env.npy')
 
-envObj = Environment(reader.arr_env, 68, 1000, 100, fault,
+envObj = Environment(reader.arr_env, 2364, 100, fault,
                      reader.df_fault, reader.df_limit, reader.df_close, reader.df_flytime,
                      reader.base_date, reader.df_plane_type, reader.df_first, reader.df_last, df_special_passtime)
 
 #print(reader.arr_env[10])
 
 #envObj.show()
+'''
+test_df = pd.DataFrame(env)
+print(test_df[((test_df[13] ==1) | (test_df[16] == 1) | (test_df[25] == 1) | (test_df[29] == 1))
+              & (test_df[46] == 1)
+              & (test_df[2] == 1) & (test_df[5] == 50)])
+'''
+
+'''
+end = False
+i = 1
+while end is False:
+    print(datetime.datetime.now(), 'Start - Action')
+    action = np.array([i, 4, 0, 0, 30, 0, 55])
+    _, _ ,_, end = envObj.step(action=action)
+    print(datetime.datetime.now(), 'End - Action')
+    i += 1
+'''
+
 
 print(datetime.datetime.now(), 'Start - Action')
-action = np.array([1, 1, 0, 0, 0, 0, 0])
-envObj.step(action=action)
-print(datetime.datetime.now(), 'End - Action')
+for i in range(800):
+    action = np.array([1, 1, 0, 0, 0, 0, 0])
+    envObj.step(action=action)
+    action = np.array([11, 2, 0, 0, 30, 0, 55])
+    envObj.step(action=action)
+    action = np.array([11, 3, 0, 0, 30, 0, 55])
+    envObj.step(action=action)
 
-
-print(datetime.datetime.now(), 'Start - Action')
-action = np.array([11, 2, 0, 0, 30, 0, 55])
-envObj.step(action=action)
 print(datetime.datetime.now(), 'End - Action')
 
 print('loss_val: ', envObj.loss_val)
 print('fault: ', envObj.fault)
 print('action_log: ', envObj.action_log)
 print('action_log: ', envObj.action_log[1])
+print('action_log: ', envObj.action_log[2])
 print('action_count: ', envObj.action_count)
 #envObj.reset()
 #envObj.show()
