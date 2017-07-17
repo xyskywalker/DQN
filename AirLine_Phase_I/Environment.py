@@ -5,7 +5,8 @@ import datetime
 
 class Environment():
     def __init__(self, env, max_actions, max_emptyflights, init_fault,
-                 df_fault, df_limit, df_close, df_flytime, base_date, df_plane_type, df_first, df_last, df_special_passtime):
+                 df_fault, df_limit, df_close, df_flytime, base_date, df_plane_type, df_first, df_last, df_special_passtime,
+                 domestic_airport):
         self.default_env = env
         self.env = self.default_env.copy()
         self.default_fault = init_fault
@@ -31,6 +32,9 @@ class Environment():
         self.df_last = df_last
         # 特殊过站时间表(默认就小于50分钟过站时间的航班)
         self.df_special_passtime = df_special_passtime
+        # 国内机场列表
+        self.domestic_airport = domestic_airport
+
 
         # 最大提前时间(仅限国内)
         self.time_diff_e = -6 * 60

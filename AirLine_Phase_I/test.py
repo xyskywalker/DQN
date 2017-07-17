@@ -22,7 +22,7 @@ env, fault, df_special_passtime = reader.read_fromfile(filename='env.npy')
 
 envObj = Environment(reader.arr_env, 2364, 100, fault,
                      reader.df_fault, reader.df_limit, reader.df_close, reader.df_flytime,
-                     reader.base_date, reader.df_plane_type, reader.df_first, reader.df_last, df_special_passtime)
+                     reader.base_date, reader.df_plane_type, reader.df_first, reader.df_last, df_special_passtime, reader.domestic_airport)
 
 time_d = 6000
 # dt = datetime.datetime.fromtimestamp(reader.base_date)
@@ -30,6 +30,12 @@ time_d = 6000
 dt1 = reader.base_date.to_pydatetime()
 dt2 = dt1 + datetime.timedelta(minutes=time_d)
 #dt2 = datetime.datetime.fromtimestamp(time.time())
+print(reader.domestic_airport)
+
+test_arr = np.random.randint(0, 100, [10, 5])
+print(test_arr)
+print(max(test_arr[:,2]))
+
 
 print(envObj.get_minutes_0(5000))
 
