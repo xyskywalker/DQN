@@ -12,11 +12,12 @@ max_emptyflights = 100
 # 每一轮调整允许的最大步数
 max_steps = 2500
 
+# 数据读取器
 reader = DataReader(filename='DATA_20170705.xlsx' , env_d=68)
-
 #reader.read(is_save=True, filename='env.npy')
 env, fault, df_special_passtime = reader.read_fromfile(filename='env.npy')
 
+# 环境控制对象
 envObj = Environment(reader.arr_env, max_steps, max_emptyflights, fault,
                      reader.df_fault, reader.df_limit, reader.df_close, reader.df_flytime, reader.base_date,
                      reader.df_plane_type, reader.df_first, reader.df_last, df_special_passtime,
@@ -26,3 +27,18 @@ envObj = Environment(reader.arr_env, max_steps, max_emptyflights, fault,
 env_len = env.shape[0] + max_emptyflights
 # 环境维度
 env_d = env.shape[1]
+# 隐含层节点数
+H = 50
+batch_size = 25
+learning_rate = 1e-1
+
+# 输入层(环境)
+input_x = tf.placeholder(tf.float32, [None, env_len, env_d], name='input_x')
+
+# 隐含层
+# 权重
+w_hidden = tf.get_variable('w_hidden', shape=[env_len, env_d, H], initializer=tf.contrib.layers.xavier_initializer())
+# 偏置
+b_hidden = tf.get_variable('b_hidden', shape=[env_len, env_d, H], initializer=tf.contrib.layers.xavier_initializer())
+# 隐含层
+layer1 = tf.nn.relu(tf.matmul(input_x, w_hidden) + b_hidden)
