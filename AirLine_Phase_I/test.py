@@ -26,7 +26,10 @@ envObj = Environment(reader.arr_env, 2364, 100, fault,
                      reader.df_plane_type, reader.df_first, reader.df_last, df_special_passtime,
                      reader.domestic_airport)
 
+print(reader.time_d_max - reader.time_d_min)
 time_d = 6000
+
+print('fault', fault)
 # dt = datetime.datetime.fromtimestamp(reader.base_date)
 
 dt1 = reader.base_date.to_pydatetime()
