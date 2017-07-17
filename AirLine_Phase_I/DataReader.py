@@ -232,32 +232,30 @@ class DataReader():
             # 13~30 故障信息
             #
             # 13、14、15起飞机场故障(状态、开始时间、结束时间):起飞时间在范围内 & 故障类型=飞行 & 起飞机场相同
-            r_ = self.df_fault[((time_d > self.df_fault['开始时间']) & (time_d < self.df_fault['结束时间']))
-                              & (self.df_fault['影响类型'] == '起飞')
-                              & (airport_d == self.df_fault['机场'])]
+            r_ = self.df_fault[(self.df_fault['影响类型'] == '起飞') & (airport_d == self.df_fault['机场'])]
             if len(r_) > 0 :
                 t_s = r_['开始时间'].min()
                 t_e = r_['结束时间'].max()
-                row[13] = 1
-                fault_count_ += 1
                 row[14] = t_s
                 row[15] = t_e
-                # 台风场景故障状态
-                row[62] = 1
+                if (time_d > t_s) & (time_d < t_e):
+                    row[13] = 1
+                    fault_count_ += 1
+                    # 台风场景故障状态
+                    row[62] = 1
 
             # 16、17、18降落机场故障(状态、开始时间、结束时间):降落时间在范围内 & (故障类型=飞行|降落) & 降落机场相同
-            r_ = self.df_fault[((time_a > self.df_fault['开始时间']) & (time_a < self.df_fault['结束时间']))
-                              & (self.df_fault['影响类型'] == '降落')
-                              & (airport_a == self.df_fault['机场'])]
+            r_ = self.df_fault[(self.df_fault['影响类型'] == '降落') & (airport_a == self.df_fault['机场'])]
             if len(r_) > 0 :
                 t_s = r_['开始时间'].min()
                 t_e = r_['结束时间'].max()
-                row[16] = 1
-                fault_count_ += 1
                 row[17] = t_s
                 row[18] = t_e
-                # 台风场景故障状态
-                row[62] = 1
+                if (time_a > t_s) & (time_a < t_e):
+                    row[16] = 1
+                    fault_count_ += 1
+                    # 台风场景故障状态
+                    row[62] = 1
 
             # 19、20、21航班故障(状态、开始时间、结束时间):起飞时间在范围内 & 故障类型=飞行 & 航班ID相同
             # 22、23、24飞机故障(状态、开始时间、结束时间):起飞时间在范围内 & 故障类型=飞行 & 飞机ID相同
@@ -265,10 +263,9 @@ class DataReader():
 
             # 29、30、31、32降落机场停机限制(状态、停机限制数量、开始时间、结束时间):
             # 时间在范围内(本航班的降落时间<结束时间 & 后继班的起飞时间>开始时间) & 故障类型=停机 & 降落机场相同
-            # 有后继航班再处理
+            # 有后继航班
             if next_id > 0:
-                r_ = self.df_fault[((time_a < self.df_fault['结束时间']) & (next_time_d > self.df_fault['开始时间']))
-                                  & (self.df_fault['影响类型'] == '停机') & (airport_a == self.df_fault['机场'])]
+                r_ = self.df_fault[(self.df_fault['影响类型'] == '停机') & (airport_a == self.df_fault['机场'])]
 
                 if len(r_) > 0:
                     self.df_fault.loc[r_.index, ['已停机数']] += 1
@@ -276,13 +273,32 @@ class DataReader():
                     p_num = 0
                     t_s = r_['开始时间'].min()
                     t_e = r_['结束时间'].max()
-                    row[29] = 1
-                    fault_count_ += 1
                     row[30] = p_num
                     row[31] = t_s
                     row[32] = t_e
-                    # 台风场景故障状态
-                    row[62] = 1
+                    if (time_a < t_e) & (next_time_d > t_s):
+                        row[29] = 1
+                        fault_count_ += 1
+                        # 台风场景故障状态
+                        row[62] = 1
+            # 无后继航班的状态
+            else:
+                r_ = self.df_fault[(self.df_fault['影响类型'] == '停机') & (airport_a == self.df_fault['机场'])]
+
+                if len(r_) > 0:
+                    self.df_fault.loc[r_.index, ['已停机数']] += 1
+
+                    p_num = 0
+                    t_s = r_['开始时间'].min()
+                    t_e = r_['结束时间'].max()
+                    row[30] = p_num
+                    row[31] = t_s
+                    row[32] = t_e
+                    if (time_a < t_e) & (time_a > t_s):
+                        row[29] = 1
+                        fault_count_ += 1
+                        # 台风场景故障状态
+                        row[62] = 1
 
             ###############################################################################################################
             # 33~42 机场关闭信息

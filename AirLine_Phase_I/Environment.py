@@ -9,6 +9,7 @@ class Environment():
                  domestic_airport):
         self.default_env = env
         self.env = self.default_env.copy()
+        self.row_count = len(self.env)
         self.default_fault = init_fault
         self.fault = self.default_fault
 
@@ -470,7 +471,6 @@ class Environment():
                 row = self.env[lineID - 1]
         #
         ############################################################################################################
-
         # 已经换过飞机或者飞机ID一样的不处理但是也不结束
         # 已经取消的航班、已经取消的、改变过时间的
         # 起飞时间提前仅限国内航班，国际航班提前则直接退出不处理(国际航班类型=0)
@@ -846,8 +846,8 @@ class Environment():
     def do_action_emptyflights(self, airport_d, airport_a, time_d, planeID):
         # 构造空行
         row_temp = np.zeros([self.env_d])
-        # 调机的航班ID，从9001开始
-        row_temp[0] = 9001 + self.max_emptyflights_count
+        # 调机的航班ID
+        row_temp[0] = self.row_count + self.max_emptyflights_count
         # 国内
         row_temp[2] = 1
         # 起飞机场
@@ -860,8 +860,15 @@ class Environment():
 
         row_temp[68: 68 + len(arr_limit)] = arr_limit
 
+        # 退出的条件标志
+        check_ = True
+
         # 航班-飞机限制
         check_ = self.check_hard_constraint(row_temp, checktype=1) is False
+
+        # 起降机场必须都是国内机场
+        if not ((airport_d in self.domestic_airport) & (airport_a in self.domestic_airport)):
+            check_ = False
 
         # 获取飞机类型
         r_ = self.df_plane_type[self.df_plane_type['飞机ID'] == planeID]
@@ -892,6 +899,99 @@ class Environment():
             row_temp[9] = self.get_minutes_0(row_temp[8])
         else:
             check_ = False
+
+        if check_:
+            df = pd.DataFrame(self.env)
+            # 查找先导与后继
+            # 调机航班必须拥有先导与后继(边界不允许调机)
+            # 获取先导航班(起飞时间小于本航班起飞时间，起飞时间从大到小排列的第一条记录
+            r_p = df[(df[10] == planeID) & (df[6] < row_temp[6])].sort_values(by=6, ascending=False)
+            if len(r_p) > 0:
+                row_p = self.env[r_p.iloc[0][0] - 1]
+                # 如果有后继航班(即先导航班的后继航班)
+                if len(row_p[44]) > 0:
+                    row_n = self.env[row_p[44] - 1]
+                    # 如果插在了联程航班中间
+                    if (row_p[46] == 1) & (row_n[46] == 1):
+                        # 新航班的先导航班
+                        row_temp[43] = row_p[0]
+                        # 新航班的后继航班
+                        row_temp[44] = row_n[0]
+                        # 新航班的过站时间
+                        row_temp[45] = row_n[6] - row_temp[8]
+
+                        # 更新先导航班的后继与过站时间
+                        row_p[44] = row_temp[0]
+                        row_p[45] = row_temp[6] - row_p[8]
+
+                        # 更新后继航班的先导
+                        row_n[43] = row_temp[0]
+
+                        ################################################################################################
+                        # 附加属性处理：故障/台风；机场关闭；
+                        # 13、14、15起飞机场故障(状态、开始时间、结束时间):起飞时间在范围内 & 故障类型=飞行 & 起飞机场相同
+                        r_ = self.df_fault[(self.df_fault['影响类型'] == '起飞') & (airport_d == self.df_fault['机场'])]
+                        if len(r_) > 0:
+                            t_s = r_['开始时间'].min()
+                            t_e = r_['结束时间'].max()
+                            row_temp[14] = t_s
+                            row_temp[15] = t_e
+                            if (row_temp[6] > t_s) & (row_temp[6] < t_e):
+                                row_temp[13] = 1
+                                self.fault += 1
+                                self.loss_val[0] = self.fault
+                                # 台风场景故障状态
+                                row_temp[62] = 1
+
+                        # 16、17、18降落机场故障(状态、开始时间、结束时间):降落时间在范围内 & (故障类型=飞行|降落) & 降落机场相同
+                        r_ = self.df_fault[(self.df_fault['影响类型'] == '降落') & (airport_a == self.df_fault['机场'])]
+                        if len(r_) > 0:
+                            t_s = r_['开始时间'].min()
+                            t_e = r_['结束时间'].max()
+                            row_temp[17] = t_s
+                            row_temp[18] = t_e
+                            if (row_temp[8] > t_s) & (row_temp[8] < t_e):
+                                row_temp[16] = 1
+                                self.fault += 1
+                                self.loss_val[0] = self.fault
+                                # 台风场景故障状态
+                                row_temp[62] = 1
+
+                        # 29、30、31、32降落机场停机限制(状态、停机限制数量、开始时间、结束时间):
+                        # 时间在范围内(本航班的降落时间<结束时间 & 后继班的起飞时间>开始时间) & 故障类型=停机 & 降落机场相同
+                        r_ = self.df_fault[(self.df_fault['影响类型'] == '停机') & (airport_a == self.df_fault['机场'])]
+                        if len(r_) > 0:
+                            self.df_fault.loc[r_.index, ['已停机数']] += 1
+                            p_num = 0
+                            t_s = r_['开始时间'].min()
+                            t_e = r_['结束时间'].max()
+                            row_temp[30] = p_num
+                            row_temp[31] = t_s
+                            row_temp[32] = t_e
+                            if (row_temp[8] < t_e) & (row_n[6] > t_s):
+                                row_temp[29] = 1
+                                self.fault += 1
+                                self.loss_val[0] = self.fault
+                                # 台风场景故障状态
+                                row_temp[62] = 1
+                        ################################################################################################
+                        # 硬约束检查
+                        # 先导航班的过站时间:
+                        self.check_hard_constraint(row1=row_p, checktype=3)
+                        # 先导航班的航站衔接
+                        self.check_hard_constraint(row1=row_p, row2=row_temp, checktype=0)
+                        # 先导航班的机场关闭
+                        self.check_hard_constraint(row1=row_p, checktype=2)
+                        # 先导航班的故障/台风
+                        self.check_hard_constraint(row1=row_p, row2=row_temp, checktype=4)
+
+
+                    else:
+                        check_ = False
+                else:
+                    check_ = False
+            else:
+                check_ = False
 
         return 1
 
