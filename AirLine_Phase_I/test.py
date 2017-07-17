@@ -30,6 +30,7 @@ print(reader.time_d_max - reader.time_d_min)
 time_d = 6000
 
 print('fault', fault)
+print(reader.df_plane_type['飞机ID'].drop_duplicates().count())
 # dt = datetime.datetime.fromtimestamp(reader.base_date)
 
 dt1 = reader.base_date.to_pydatetime()

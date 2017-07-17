@@ -166,6 +166,10 @@ class DataReader():
         domestic_airport_d = self.df[(self.df['国际/国内'] == '国内')]['起飞机场']
         domestic_airport_a = self.df[(self.df['国际/国内'] == '国内')]['降落机场']
         self.domestic_airport = np.array(pd.concat([domestic_airport_d, domestic_airport_a]).drop_duplicates())
+        # 所有机场列表
+        airport_d = self.df['起飞机场']
+        airport_a = self.df['降落机场']
+        self.all_airports = np.array(pd.concat([airport_d, airport_a]).drop_duplicates())
 
         ################################################################################################################
         # 获取可能的最早和最晚起飞时间
