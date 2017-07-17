@@ -83,10 +83,17 @@ class Environment():
     # 环境重置
     def reset(self):
         self.env = self.default_env.copy()
+        self.row_count = len(self.env)
+        tempArr = np.zeros([self.max_emptyflights, self.env_d], dtype=np.int32)
+        self.env = np.row_stack((self.env, tempArr))
+
         self.fault = self.default_fault
+
         self.loss_val = np.zeros([7])
         self.loss_val[0] = self.fault
+
         self.max_emptyflights_count = 0
+
         self.action_log = np.zeros([self.max_actions, 9])
         self.action_count = 0
 
