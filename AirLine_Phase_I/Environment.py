@@ -91,7 +91,7 @@ class Environment():
 
     # 通过相对于基准日期的分钟数获取相对于当天0点的分钟数
     def get_minutes_0(self, minutes_basedate):
-        dt = self.base_date + datetime.timedelta(minutes=minutes_basedate)
+        dt = self.base_date + datetime.timedelta(minutes=float(minutes_basedate))
         return dt.hour * 60 + dt.minute
 
     # action
@@ -100,8 +100,7 @@ class Environment():
     # 2: 起飞机场
     # 3: 降落机场
     # 4: 起飞时间
-    # 5: 降落时间
-    # 6: 飞机ID
+    # 5: 飞机ID
     def step(self, action):
         # 结束标识
         end = False
@@ -118,14 +117,13 @@ class Environment():
                 return_count = self.do_action_emptyflights(airport_d=action[2]
                                                            , airport_a=action[3]
                                                            , time_d=action[4]
-                                                           , time_a=action[5]
-                                                           , planeID=action[6])
+                                                           , planeID=action[5])
             # 取消
             elif action_type == 1:
                 return_count = self.do_action_cancel(lineID=action[0])
             # 换飞机
             elif action_type == 2:
-                return_count = self.do_action_flightchange(lineID=action[0], new_planeID=action[6], time_d=action[4])
+                return_count = self.do_action_flightchange(lineID=action[0], new_planeID=action[5], time_d=action[4])
             # 调整时间
             elif action_type == 3:
                 return_count = self.do_action_changetime(lineID=action[0], time_d=action[4])
@@ -845,26 +843,22 @@ class Environment():
     #   边界禁止、航线-飞机限制、调机仅限国内航班、不在飞行时间表内
     def do_action_emptyflights(self, airport_d, airport_a, time_d, planeID):
         # 构造空行
-        row_temp = np.zeros([self.env_d])
+        row_temp = np.zeros([self.env_d], dtype=np.int32)
         # 调机的航班ID
-        row_temp[0] = self.row_count + self.max_emptyflights_count
+        row_temp[0] = self.row_count + self.max_emptyflights_count + 1
         # 国内
         row_temp[2] = 1
         # 起飞机场
         row_temp[4] = airport_d
         # 到底机场
         row_temp[5] = airport_a
-        # 航线-飞机限制表构造
-        arr_limit = np.array(self.df_limit[(self.df_limit['起飞机场'] == airport_d)
-                                           & (self.df_limit['降落机场'] == airport_a)]['飞机ID'])
-
-        row_temp[68: 68 + len(arr_limit)] = arr_limit
 
         # 退出的条件标志
         check_ = True
 
-        # 航班-飞机限制
-        check_ = self.check_hard_constraint(row_temp, checktype=1) is False
+        # 航线-飞机限制表构造
+        arr_limit = np.array(self.df_limit[((self.df_limit['起飞机场'] == airport_d)
+                                           & (self.df_limit['降落机场'] == airport_a))]['飞机ID'])
 
         # 起降机场必须都是国内机场
         if not ((airport_d in self.domestic_airport) & (airport_a in self.domestic_airport)):
@@ -879,6 +873,10 @@ class Environment():
             # 飞机类型
             row_temp[11] = plane_type
 
+            if len(arr_limit) > 0:
+                row_temp[68: 68 + len(arr_limit)] = arr_limit
+                # 航班-飞机限制
+                check_ = self.check_hard_constraint(row_temp, checktype=1) is False
         else:
             check_ = False
 
@@ -909,10 +907,13 @@ class Environment():
             if len(r_p) > 0:
                 row_p = self.env[r_p.iloc[0][0] - 1]
                 # 如果有后继航班(即先导航班的后继航班)
-                if len(row_p[44]) > 0:
+                if row_p[44] > 0:
                     row_n = self.env[row_p[44] - 1]
+
                     # 如果插在了联程航班中间
                     if (row_p[46] == 1) & (row_n[46] == 1):
+                        check_ = False
+                    else:
                         # 新航班的先导航班
                         row_temp[43] = row_p[0]
                         # 新航班的后继航班
@@ -974,6 +975,43 @@ class Environment():
                                 self.loss_val[0] = self.fault
                                 # 台风场景故障状态
                                 row_temp[62] = 1
+
+                        # 33起飞机场关闭(相对于0点的分钟数)，34起飞机场开放(相对于0点的分钟数)，35起飞机场关闭起效日期，36起飞机场关闭失效日期，37是否起飞机场关闭
+                        # 起飞机场ID一致 & 起飞时间在机场关闭的生效与失效日期之内
+                        rows = np.array(self.df_close[(self.df_close['机场'] == airport_d)])
+                        for row_ in rows:
+                            # 关闭和开放时间之间跨越24点的处理
+                            if row_[2] < row_[1]:
+                                row_[2] += 24 * 60
+
+                            row_temp[33] = row_[1]
+                            row_temp[34] = row_[2]
+                            row_temp[35] = row_[3]
+                            row_temp[36] = row_[4]
+                            if (row_temp[6] >= row_[3]) & (row_temp[6] <= row_[4]) \
+                                    & (row_temp[7] > row_[1]) & (row_temp[7] < row_[2]):
+                                self.fault += 1
+                                self.loss_val[0] = self.fault
+                                row_temp[37] = 1
+
+                        # 38降落机场关闭(相对于0点的分钟数)，39降落机场开放(相对于0点的分钟数)，40降落机场关闭起效日期，41降落机场关闭失效日期，42是否降落机场关闭
+                        # 降落机场ID一致 & 降落时间在机场关闭的生效与失效日期之内
+                        rows = np.array(self.df_close[(self.df_close['机场'] == airport_a)])
+                        for row_ in rows:
+                            # 关闭和开放时间之间跨越24点的处理
+                            if row_[2] < row_[1]:
+                                row_[2] += 24 * 60
+
+                            row_temp[38] = row_[1]
+                            row_temp[39] = row_[2]
+                            row_temp[40] = row_[3]
+                            row_temp[41] = row_[4]
+                            if (row_temp[8] >= row_[3]) & (row_temp[8] <= row_[4]) \
+                                    & (row_temp[9] > row_[1]) & (row_temp[9] < row_[2]):
+                                self.fault += 1
+                                self.loss_val[0] = self.fault
+                                row_temp[42] = 1
+
                         ################################################################################################
                         # 硬约束检查
                         # 先导航班的过站时间:
@@ -985,13 +1023,37 @@ class Environment():
                         # 先导航班的故障/台风
                         self.check_hard_constraint(row1=row_p, row2=row_temp, checktype=4)
 
+                        # 新的空飞航班检测
+                        # 过站时间
+                        self.check_hard_constraint(row1=row_temp, checktype=3)
+                        # 航站衔接
+                        self.check_hard_constraint(row1=row_temp, row2=row_n, checktype=0)
 
-                    else:
-                        check_ = False
+                        # 后继航班无需检测
                 else:
                     check_ = False
             else:
                 check_ = False
+
+        if check_:
+            # 更新到环境上
+            self.env[row_temp[0] - 1] = row_temp
+            # 调机航班数+1
+            self.loss_val[1] += 1
+            # action 日志更新(无论机型是否变化都要记录)
+            log = self.action_log[self.action_count]
+            # 航班ID
+            log[0] = row_temp[0]
+            # 起飞机场
+            log[1] = row_temp[4]
+            # 降落机场
+            log[2] = row_temp[5]
+            # 起飞时间
+            log[3] = row_temp[6]
+            # 降落时间
+            log[4] = row_temp[8]
+            # 飞机ID
+            log[5] = planeID
 
         return 1
 

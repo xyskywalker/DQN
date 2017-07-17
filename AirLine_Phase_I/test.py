@@ -18,6 +18,7 @@ loss_para = np.array([100000, 50, 10, 10, 7.5, 1, 1.5] ,dtype=np.float32)
 
 reader = DataReader(filename='DATA_20170705.xlsx' , env_d=68)
 
+#reader.read(is_save=True, filename='env.npy')
 env, fault, df_special_passtime = reader.read_fromfile(filename='env.npy')
 
 envObj = Environment(reader.arr_env, 2364, 100, fault,
@@ -30,14 +31,6 @@ time_d = 6000
 dt1 = reader.base_date.to_pydatetime()
 dt2 = dt1 + datetime.timedelta(minutes=time_d)
 #dt2 = datetime.datetime.fromtimestamp(time.time())
-print(reader.domestic_airport)
-
-test_arr = np.random.randint(0, 100, [10, 5])
-print(test_arr)
-print(max(test_arr[:,2]))
-
-
-print(envObj.get_minutes_0(5000))
 
 #print(dt2)
 #print(dt2.hour)
@@ -75,14 +68,20 @@ for i in range(800):
     envObj.step(action=action)
 
 print(datetime.datetime.now(), 'End - Action')
+'''
 
+print(datetime.datetime.now(), 'Start - Action')
+action = np.array([0, 0, 48, 50, 1440, 40])
+envObj.step(action=action)
+
+print(datetime.datetime.now(), 'End - Action')
 print('loss_val: ', envObj.loss_val)
 print('fault: ', envObj.fault)
 print('action_log: ', envObj.action_log)
+print('action_log: ', envObj.action_log[0])
 print('action_log: ', envObj.action_log[1])
-print('action_log: ', envObj.action_log[2])
 print('action_count: ', envObj.action_count)
-'''
+
 #envObj.reset()
 #envObj.show()
 
