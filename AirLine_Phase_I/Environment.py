@@ -5,7 +5,8 @@ import datetime
 
 class Environment():
     def __init__(self, env, max_actions, max_emptyflights, init_fault,
-                 df_fault, df_limit, df_close, df_flytime, base_date, df_plane_type, df_first, df_last, df_special_passtime,
+                 df_fault, df_limit, df_close, df_flytime, base_date,
+                 df_plane_type, df_first, df_last, df_special_passtime,
                  domestic_airport):
         self.default_env = env
         self.env = self.default_env.copy()

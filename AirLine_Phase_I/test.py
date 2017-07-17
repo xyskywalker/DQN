@@ -22,8 +22,9 @@ reader = DataReader(filename='DATA_20170705.xlsx' , env_d=68)
 env, fault, df_special_passtime = reader.read_fromfile(filename='env.npy')
 
 envObj = Environment(reader.arr_env, 2364, 100, fault,
-                     reader.df_fault, reader.df_limit, reader.df_close, reader.df_flytime,
-                     reader.base_date, reader.df_plane_type, reader.df_first, reader.df_last, df_special_passtime, reader.domestic_airport)
+                     reader.df_fault, reader.df_limit, reader.df_close, reader.df_flytime, reader.base_date,
+                     reader.df_plane_type, reader.df_first, reader.df_last, df_special_passtime,
+                     reader.domestic_airport)
 
 time_d = 6000
 # dt = datetime.datetime.fromtimestamp(reader.base_date)
