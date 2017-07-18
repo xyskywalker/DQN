@@ -144,8 +144,10 @@ class Environment():
             else:
                 # 操作计数+1
                 self.action_count += return_count
+                if self.fault > 650:
+                    end = True
 
-        return self.env, self.action_log, self.action_count, end
+        return end
 
     # 硬约束检测函数
     # checktype: 0航站衔接、1航线-飞机限制、2机场关闭、3过站时间、4故障/台风、5边界禁止-最早、6边界禁止-最晚
@@ -398,14 +400,14 @@ class Environment():
         # 检测是否边界约束-最晚(联程拉直导致的第二段取消时不检查是否是最晚的边际航班)
         l_ = self.check_hard_constraint(row, checktype=6) & (row[55] == 0)
 
-        if f_ | l_:
+        # 直接退出：违反边界约束或者已经取消过
+        if f_ | l_ | (row[52] == 1):
             return -1
         else:
-            # 不退出也不处理的情况：
-            #   已经取消过
+            # 其他退出不处理的情况：
             #   做过其他调整的:换飞机、调整时间，由于联程拉直需要取消的第二段无论之前有没有调整过都要取消
-            if ((row[52] == 1) | (row[53] != 0) | (row[54] != 0)) & (row[55] == 0):
-                return 1
+            if ((row[53] != 0) | (row[54] != 0)) & (row[55] == 0):
+                return -1
             else:
                 # 取消标记
                 row[52] = 1
@@ -451,11 +453,9 @@ class Environment():
     # 暂时保留的硬约束：
     #   航站衔接、机场关闭、过站时间、故障/台风、边界禁止、联程航班前后飞机必须一致
     # 直接退出的硬约束：
-    #   航线-飞机限制、提前、延误时间限制
+    #   航线-飞机限制、提前、延误时间限制、已经取消的航班、已经换过飞机、飞机ID一样、提前仅限国内航班
     # 不存在的硬约束:
     #   NA
-    # 不退出也不处理的情况：
-    #   已经取消的航班、已经换过飞机、飞机ID一样、提前仅限国内航班
     def do_action_flightchange(self, lineID, new_planeID, time_d = 0):
         # 处理的航班
         row = self.env[lineID - 1]
@@ -480,7 +480,7 @@ class Environment():
         # 已经取消的航班、已经取消的、改变过时间的
         # 起飞时间提前仅限国内航班，国际航班提前则直接退出不处理(国际航班类型=0)
         if (row[52] == 1) | (row[53] == 1) | (row[53] == 2) | (row[10] == new_planeID) | ((time_d < 0) & (row[2] == 0)):
-            return 1
+            return -1
         else:
             ############################################################################################################
             # 基本环境信息更新
@@ -1046,7 +1046,7 @@ class Environment():
             # 更新到环境上
             self.env[row_temp[0] - 1] = row_temp
             # 调机航班数+1
-            self.loss_val[1] += 1
+            self.loss_val[1] += 1 * 100
             # action 日志更新(无论机型是否变化都要记录)
             log = self.action_log[self.action_count]
             # 航班ID
@@ -1062,7 +1062,9 @@ class Environment():
             # 飞机ID
             log[5] = planeID
 
-        return 1
+            return 1
+        else:
+            return -1
 
     # 调整时间
     # lineID: 航班ID
@@ -1073,11 +1075,9 @@ class Environment():
     # 暂时保留的硬约束：
     #   机场关闭、过站时间、故障/台风
     # 直接退出的硬约束：
-    #   NA
+    #   提前仅限国内航班、提前、延误时间限制
     # 不存在的硬约束:
     #   航线-飞机限制、航站衔接、边界禁止
-    # 不退出也不处理的情况：
-    #   提前仅限国内航班、提前、延误时间限制
     def do_action_changetime(self, lineID, time_d):
         row = self.env[lineID - 1]
         # 提前最多6小时(仅限国内航班)
@@ -1090,7 +1090,7 @@ class Environment():
             time_diff_l = self.time_diff_l_0
 
         if (time_d < time_diff_e) | (time_d > time_diff_l) | (time_d == 0):
-            return 1
+            return -1
         else:
             # 更新起降时间
             # 重算起飞降落时间

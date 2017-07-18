@@ -124,6 +124,8 @@ with tf.Session() as sess:
             discounted_epr -= np.mean(discounted_epr)
             discounted_epr /= np.std(discounted_epr)
 
+            # print('input_y', epy)
+            # print('advantages', discounted_epr)
             tGrad = sess.run(newGrads, feed_dict={observations: epx, input_y: epy, advantages: discounted_epr})
             for ix, grad in enumerate(tGrad):
                 gradBuffer[ix] += grad

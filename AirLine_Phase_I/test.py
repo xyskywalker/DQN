@@ -4,6 +4,7 @@ from AirLine_Phase_I.Environment import Environment
 import datetime
 import time
 import pandas as pd
+import tensorflow as tf
 
 
 # loss的参数，需要调整的即失效航班使用一个非常大的参数，原目标函数的参数一律除以100处理，用以加大与失效航班的差异
@@ -76,8 +77,11 @@ print(datetime.datetime.now(), 'End - Action')
 '''
 
 print(datetime.datetime.now(), 'Start - Action')
-action = np.array([0, 0, 48, 50, 1440, 40])
-envObj.step(action=action)
+loss_param = np.array([100000, 0.5, 0.1, 0.1, 0.075, 0.01, 0.015] ,dtype=np.float32)
+action = np.array([ 611.,   60.,    0.,    0.,    0.,    0.,    0.])
+print(sum(loss_param * action))
+
+#envObj.step(action=action)
 
 print(datetime.datetime.now(), 'End - Action')
 print('loss_val: ', envObj.loss_val)
@@ -86,6 +90,15 @@ print('action_log: ', envObj.action_log)
 print('action_log: ', envObj.action_log[0])
 print('action_log: ', envObj.action_log[1])
 print('action_count: ', envObj.action_count)
+
+x = []
+testarr1 = np.array([[1,2], [3, 4]])
+x_ = np.reshape(testarr1, [-1])
+print(x_)
+x.append(x_)
+x.append(x_)
+print(x)
+print(np.vstack(x))
 
 #envObj.reset()
 #envObj.show()

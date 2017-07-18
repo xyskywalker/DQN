@@ -144,6 +144,8 @@ class DataReader():
         # 飞机ID-机型表
         # 飞机ID，机型
         self.df_plane_type = self.df[['飞机ID', '机型']].drop_duplicates()
+        # 飞机ID表
+        self.all_plane = np.array(self.df_plane_type['飞机ID'].drop_duplicates().sort_values())
 
         ################################################################################################################
         # 边界表
