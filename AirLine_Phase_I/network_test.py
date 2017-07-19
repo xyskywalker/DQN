@@ -70,100 +70,158 @@ actiontype_output = tf.argmax(layer_actiontype, 1)
 # 输出层-机场-起飞
 w_airport_d = tf.get_variable('w_airport_d', shape=[H, d_airports], initializer=tf.contrib.layers.xavier_initializer())
 b_airport_d = tf.get_variable('b_airport_d', shape=[d_airports], initializer=tf.contrib.layers.xavier_initializer())
-layer_airport_d = tf.nn.softmax(tf.matmul(layer_hidden, w_airport_d) + b_airport_d)
+layer_airport_d_p = tf.matmul(layer_hidden, w_airport_d) + b_airport_d
+layer_airport_d = tf.nn.softmax(layer_airport_d_p)
 airport_d_output = tf.argmax(layer_airport_d, 1)
 
 # 输出层-机场-降落
 w_airport_a = tf.get_variable('w_airport_a', shape=[H, d_airports], initializer=tf.contrib.layers.xavier_initializer())
 b_airport_a = tf.get_variable('b_airport_a', shape=[d_airports], initializer=tf.contrib.layers.xavier_initializer())
-layer_airport_a = tf.nn.softmax(tf.matmul(layer_hidden, w_airport_a) + b_airport_a)
+layer_airport_a_p = tf.matmul(layer_hidden, w_airport_a) + b_airport_a
+layer_airport_a = tf.nn.softmax(layer_airport_a_p)
 airport_a_output = tf.argmax(layer_airport_a, 1)
 
 # 输出层-航班ID
 w_line = tf.get_variable('w_line', shape=[H, d_lineid], initializer=tf.contrib.layers.xavier_initializer())
 b_line = tf.get_variable('b_line', shape=[d_lineid], initializer=tf.contrib.layers.xavier_initializer())
-layer_line = tf.nn.softmax(tf.matmul(layer_hidden, w_line) + b_line)
+layer_line_p = tf.matmul(layer_hidden, w_line) + b_line
+layer_line = tf.nn.softmax(layer_line_p)
 line_output = tf.argmax(layer_line, 1)
 
 # 输出层-飞机
 w_plane = tf.get_variable('w_plane', shape=[H, d_plane], initializer=tf.contrib.layers.xavier_initializer())
 b_plane = tf.get_variable('b_plane', shape=[d_plane], initializer=tf.contrib.layers.xavier_initializer())
-layer_plane = tf.nn.softmax(tf.matmul(layer_hidden, w_plane) + b_plane)
+layer_plane_p = tf.matmul(layer_hidden, w_plane) + b_plane
+layer_plane = tf.nn.softmax(layer_plane_p)
 plane_output = tf.argmax(layer_plane, 1)
 
 # 提前或者延误多少时间
 w_time_diff = tf.get_variable('w_time_diff', shape=[H, d_time_diff], initializer=tf.contrib.layers.xavier_initializer())
 b_time_diff = tf.get_variable('b_time_diff', shape=[d_time_diff], initializer=tf.contrib.layers.xavier_initializer())
-layer_time_diff = tf.nn.softmax(tf.matmul(layer_hidden, w_time_diff) + b_time_diff)
+layer_time_diff_p = tf.matmul(layer_hidden, w_time_diff) + b_time_diff
+layer_time_diff = tf.nn.softmax(layer_time_diff_p)
 time_diff_output = tf.argmax(layer_time_diff, 1)
 
 # 起飞时间-仅供调机用
 w_time_d = tf.get_variable('w_time_d', shape=[H, d_time_d], initializer=tf.contrib.layers.xavier_initializer())
 b_time_d = tf.get_variable('b_time_d', shape=[d_time_d], initializer=tf.contrib.layers.xavier_initializer())
-layer_time_d= tf.nn.softmax(tf.matmul(layer_hidden, w_time_d) + b_time_d)
+layer_time_d_p = tf.matmul(layer_hidden, w_time_d) + b_time_d
+layer_time_d= tf.nn.softmax(layer_time_d_p)
 time_d_output = tf.argmax(layer_time_d, 1)
 
 # Loss计算值输入
 input_y = tf.placeholder(tf.float32, [None, 7], name='input_y')
 # 计算Loss用的参数
 input_param = tf.placeholder(tf.float32, [7], name='input_param')
-
-loss_ = tf.reshape(tf.reduce_sum(input_y * input_param, 1), [-1, 1])
-loglik = tf.log(tf.reduce_sum(layer_actiontype_p * layer_actiontype))
-loss = tf.reduce_mean(loss_ * loglik)
+# 目标函数值
+loss_ = tf.reduce_sum(input_y * input_param, 1)
 
 # 不同类型操作需要训练的参数、loss、优化方法
-# 0调机，需要的参数：隐含层，动作类型，起飞机场，降落机场，起飞时间，飞机ID
-tvars_emptyflights = \
-    [v for v in tf.trainable_variables() if v.name in
-     ['w_hidden:0', 'b_hidden:0', 'w_actiontype:0', 'b_actiontype:0', 'w_airport_d:0', 'b_airport_d:0',
-      'w_airport_a:0', 'b_airport_a:0', 'w_time_d:0', 'b_time_d:0', 'w_plane:0', 'b_plane:0']]
-newGrads_emptyflights = tf.gradients(loss, tvars_emptyflights)
-
-# 1取消，需要的参数：隐含层，动作类型，航班ID
-tvars_cancel = \
-    [v for v in tf.trainable_variables() if v.name in
-     ['w_hidden:0', 'b_hidden:0', 'w_actiontype:0', 'b_actiontype:0', 'w_line:0', 'b_line:0']]
-newGrads_cancel = tf.gradients(loss, tvars_cancel)
-
-# 2换飞机，需要的参数：隐含层，动作类型，航班ID，调整的时间，飞机ID
-tvars_flightchange = \
-    [v for v in tf.trainable_variables() if v.name in
-     ['w_hidden:0', 'b_hidden:0', 'w_actiontype:0', 'b_actiontype:0', 'w_line:0', 'b_line:0',
-      'w_time_diff:0', 'b_time_diff:0', 'w_plane:0', 'b_plane:0']]
-newGrads_flightchange = tf.gradients(loss, tvars_flightchange)
-
-# 3调整时间，需要的参数：隐含层，动作类型，航班ID，调整的时间
-tvars_changetime = \
-    [v for v in tf.trainable_variables() if v.name in
-     ['w_hidden:0', 'b_hidden:0', 'w_actiontype:0', 'b_actiontype:0', 'w_line:0', 'b_line:0',
-      'w_time_diff:0', 'b_time_diff:0']]
-newGrads_changetime = tf.gradients(loss, tvars_changetime)
-
 # 优化器使用Adam算法
 adam = tf.train.AdamOptimizer(learning_rate=learning_rate)
 # 所有网络参数的梯度placeholder
-W1Grad = tf.placeholder(tf.float32, name='batch_w_grad1')
-W2Grad = tf.placeholder(tf.float32, name='batch_w_grad2')
-W3Grad = tf.placeholder(tf.float32, name='batch_w_grad3')
-W4Grad = tf.placeholder(tf.float32, name='batch_w_grad4')
-W5Grad = tf.placeholder(tf.float32, name='batch_w_grad5')
-W6Grad = tf.placeholder(tf.float32, name='batch_w_grad6')
-W7Grad = tf.placeholder(tf.float32, name='batch_w_grad7')
-W8Grad = tf.placeholder(tf.float32, name='batch_w_grad8')
+W_hidden_Grad = tf.placeholder(tf.float32, name='w_hidden_grad')
+W_actiontype_Grad = tf.placeholder(tf.float32, name='w_actiontype_grad')
+W_airport_d_Grad = tf.placeholder(tf.float32, name='w_airport_d_grad')
+W_airport_a_Grad = tf.placeholder(tf.float32, name='w_airport_a_grad')
+W_line_Grad = tf.placeholder(tf.float32, name='w_line_grad')
+W_plane_Grad = tf.placeholder(tf.float32, name='w_plane_grad')
+W_time_diff_Grad = tf.placeholder(tf.float32, name='w_time_diff_grad')
+W_time_d_Grad = tf.placeholder(tf.float32, name='w_time_d_grad')
 
-B1Grad = tf.placeholder(tf.float32, name='batch_b_grad1')
-B2Grad = tf.placeholder(tf.float32, name='batch_b_grad2')
-B3Grad = tf.placeholder(tf.float32, name='batch_b_grad3')
-B4Grad = tf.placeholder(tf.float32, name='batch_b_grad4')
-B5Grad = tf.placeholder(tf.float32, name='batch_b_grad5')
-B6Grad = tf.placeholder(tf.float32, name='batch_b_grad6')
-B7Grad = tf.placeholder(tf.float32, name='batch_b_grad7')
-B8Grad = tf.placeholder(tf.float32, name='batch_b_grad8')
+B_hidden_Grad = tf.placeholder(tf.float32, name='b_hidden_grad')
+B_actiontype_Grad = tf.placeholder(tf.float32, name='b_actiontype_grad')
+B_airport_d_Grad = tf.placeholder(tf.float32, name='b_airport_d_grad')
+B_airport_a_Grad = tf.placeholder(tf.float32, name='b_airport_a_grad')
+B_line_Grad = tf.placeholder(tf.float32, name='b_line_grad')
+B_plane_Grad = tf.placeholder(tf.float32, name='b_plane_grad')
+B_time_diff_Grad = tf.placeholder(tf.float32, name='b_time_diff_grad')
+B_time_d_Grad = tf.placeholder(tf.float32, name='b_time_d_grad')
 
-batchGrad = [W1Grad, B1Grad, W2Grad, B2Grad, W3Grad, B3Grad, W4Grad, B4Grad
-    , W5Grad, B5Grad, W6Grad, B6Grad, W7Grad, B7Grad, W8Grad, B8Grad, ]
-updateGrads = adam.apply_gradients(zip(batchGrad, tvars))
+# 所有可训练的参数
+tvars_w_hidden = [v for v in tf.trainable_variables() if v.name == 'w_hidden:0' ][0]
+tvars_b_hidden = [v for v in tf.trainable_variables() if v.name == 'b_hidden:0' ][0]
+tvars_w_actiontype = [v for v in tf.trainable_variables() if v.name == 'w_actiontype:0' ][0]
+tvars_b_actiontype = [v for v in tf.trainable_variables() if v.name == 'b_actiontype:0' ][0]
+tvars_w_airport_d = [v for v in tf.trainable_variables() if v.name == 'w_airport_d:0' ][0]
+tvars_b_airport_d = [v for v in tf.trainable_variables() if v.name == 'b_airport_d:0' ][0]
+tvars_w_airport_a = [v for v in tf.trainable_variables() if v.name == 'w_airport_a:0' ][0]
+tvars_b_airport_a = [v for v in tf.trainable_variables() if v.name == 'b_airport_a:0' ][0]
+tvars_w_line = [v for v in tf.trainable_variables() if v.name == 'w_line:0' ][0]
+tvars_b_line = [v for v in tf.trainable_variables() if v.name == 'b_line:0' ][0]
+tvars_w_plane = [v for v in tf.trainable_variables() if v.name == 'w_plane:0' ][0]
+tvars_b_plane = [v for v in tf.trainable_variables() if v.name == 'b_plane:0' ][0]
+tvars_w_time_diff = [v for v in tf.trainable_variables() if v.name == 'w_time_diff:0' ][0]
+tvars_b_time_diff = [v for v in tf.trainable_variables() if v.name == 'b_time_diff:0' ][0]
+tvars_w_time_d = [v for v in tf.trainable_variables() if v.name == 'w_time_d:0' ][0]
+tvars_b_time_d = [v for v in tf.trainable_variables() if v.name == 'b_time_d:0' ][0]
+
+# 0调机，需要的参数：隐含层，动作类型，起飞机场，降落机场，起飞时间，飞机ID
+# 需要计算个概率：动作类型，起飞机场，降落机场，起飞时间，飞机ID
+loglik_emptyflights_p_ = [tf.reduce_max(layer_actiontype_p, 1),
+                          tf.reduce_max(layer_airport_d_p, 1),
+                          tf.reduce_max(layer_airport_a_p, 1),
+                          tf.reduce_max(layer_time_d_p, 1),
+                          tf.reduce_max(layer_plane_p, 1)]
+loglik_emptyflights_p = tf.reduce_mean(loglik_emptyflights_p_, 0)
+loglik_emptyflights = tf.log(loglik_emptyflights_p)
+loss_emptyflights = tf.reduce_mean(loss_ / loglik_emptyflights)
+
+tvars_emptyflights = [tvars_w_hidden, tvars_b_hidden, tvars_w_actiontype, tvars_b_actiontype,
+                      tvars_w_airport_d, tvars_b_airport_d, tvars_w_airport_a, tvars_b_airport_a,
+                      tvars_w_time_d, tvars_b_time_d, tvars_w_plane, tvars_b_plane]
+newGrads_emptyflights = tf.gradients(loss_emptyflights, tvars_emptyflights)
+batchGrad_emptyflights = [W_hidden_Grad, B_hidden_Grad, W_actiontype_Grad, B_actiontype_Grad, W_airport_d_Grad, B_airport_d_Grad,
+             W_airport_a_Grad, B_airport_a_Grad, W_time_d_Grad, B_time_d_Grad, W_plane_Grad, B_plane_Grad ]
+updateGrads_emptyflights = adam.apply_gradients(zip(batchGrad_emptyflights, tvars_emptyflights))
+
+# 1取消，需要的参数：隐含层，动作类型，航班ID
+# 需要计算的概率：动作类型，航班ID
+loglik_cancel_p_ = [tf.reduce_max(layer_actiontype_p, 1),
+                    tf.reduce_max(layer_line_p, 1)]
+loglik_cancel_p = tf.reduce_mean(loglik_cancel_p_, 0)
+loglik_cancel = tf.log(loglik_cancel_p)
+loss_cancel = tf.reduce_mean(loss_ / loglik_cancel)
+
+tvars_cancel = [tvars_w_hidden, tvars_b_hidden, tvars_w_actiontype, tvars_b_actiontype,
+                tvars_w_line, tvars_b_line]
+newGrads_cancel = tf.gradients(loss_cancel, tvars_cancel)
+batchGrad_cancel = [W_hidden_Grad, B_hidden_Grad, W_actiontype_Grad, B_actiontype_Grad, W_line_Grad, B_line_Grad]
+updateGrads_cancel = adam.apply_gradients(zip(batchGrad_cancel, tvars_cancel))
+
+
+# 2换飞机，需要的参数：隐含层，动作类型，航班ID，调整的时间，飞机ID
+# 需要计算的概率：动作类型，航班ID，调整时间，飞机ID
+loglik_flightchange_p_ = [tf.reduce_max(layer_actiontype_p, 1),
+                          tf.reduce_max(layer_line_p, 1),
+                          tf.reduce_max(layer_time_diff_p, 1),
+                          tf.reduce_max(layer_plane_p, 1)]
+loglik_flightchange_p = tf.reduce_mean(loglik_flightchange_p_, 0)
+loglik_flightchange = tf.log(loglik_flightchange_p)
+loss_flightchange = tf.reduce_mean(loss_ / loglik_flightchange)
+
+tvars_flightchange = [tvars_w_hidden, tvars_b_hidden, tvars_w_actiontype, tvars_b_actiontype,
+                      tvars_w_line, tvars_b_line, tvars_w_time_diff, tvars_b_time_diff, tvars_w_plane, tvars_b_plane]
+newGrads_flightchange = tf.gradients(loss_flightchange, tvars_flightchange)
+batchGrad_flightchange = [W_hidden_Grad, B_hidden_Grad, W_actiontype_Grad, B_actiontype_Grad, W_line_Grad, B_line_Grad,
+                          W_time_diff_Grad, B_time_diff_Grad, W_plane_Grad, B_plane_Grad]
+updateGrads_flightchange = adam.apply_gradients(zip(batchGrad_flightchange, tvars_flightchange))
+
+# 3调整时间，需要的参数：隐含层，动作类型，航班ID，调整的时间
+# 需要计算的概率：动作类型，航班ID，调整时间
+loglik_changetime_p_ = [tf.reduce_max(layer_actiontype_p, 1),
+                          tf.reduce_max(layer_line_p, 1),
+                          tf.reduce_max(layer_time_diff_p, 1)]
+loglik_changetime_p = tf.reduce_mean(loglik_changetime_p_, 0)
+loglik_changetime = tf.log(loglik_changetime_p)
+loss_changetime = tf.reduce_mean(loss_ / loglik_changetime)
+
+tvars_changetime = [tvars_w_hidden, tvars_b_hidden, tvars_w_actiontype, tvars_b_actiontype,
+                    tvars_w_line, tvars_b_line, tvars_w_time_diff, tvars_b_time_diff]
+newGrads_changetime = tf.gradients(loss_changetime, tvars_changetime)
+batchGrad_changetime = [W_hidden_Grad, B_hidden_Grad, W_actiontype_Grad, B_actiontype_Grad, W_line_Grad, B_line_Grad,
+                        W_time_diff_Grad, B_time_diff_Grad]
+updateGrads_changetime = adam.apply_gradients(zip(batchGrad_changetime, tvars_changetime))
 
 with tf.Session() as sess:
     init = tf.global_variables_initializer()
@@ -174,21 +232,22 @@ with tf.Session() as sess:
     x = envObj.env.copy().astype(np.float32)
     x = np.reshape(x, [-1])
     xs.append(x)
+    xs.append(x)
     #ys.append(np.array([610., 0., 5500., 0., 0., 0., 0.], dtype=np.float32))
-    ys.append(np.array([611., 60., 0., 0., 0., 0., 0.], dtype=np.float32))
-    ys.append(np.array([611., 70., 0., 0., 0., 0., 0.], dtype=np.float32))
+    ys.append(np.array([611., 600., 0., 0., 0., 0., 0.], dtype=np.float32))
+    ys.append(np.array([611., 700., 0., 0., 0., 0., 0.], dtype=np.float32))
     print(ys)
-    o1_, o2_, o3_ = sess.run([loss_, loglik, loss], feed_dict={input_x: xs, input_y: ys, input_param: loss_param})
-    print(o1_)
-    print(o2_)
-    print(o3_)
+    o1_, o2_, o3_ = sess.run([loglik_cancel_p, loglik_cancel, loss_cancel], feed_dict={input_x: xs, input_y: ys, input_param: loss_param})
+    print('loglik_cancel_p', o1_)
+    print('loglik_cancel', o2_)
+    print('loss_cancel', o3_)
 
 
-    gradBuffer = sess.run(tvars)
-    for ix, grad in enumerate(gradBuffer):
-        print('ix', ix)
-        print('grad', np.array(grad).shape)
-        gradBuffer[ix] = grad * 0
+    #gradBuffer = sess.run(tvars_cancel)
+    #for ix, grad in enumerate(gradBuffer):
+    #    print('ix', ix)
+    #    print('grad', np.array(grad).shape)
+    #    gradBuffer[ix] = grad * 0
 
     episode_number = 10
     while episode_number <= total_episodes:
