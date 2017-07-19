@@ -112,9 +112,33 @@ loss_ = tf.reshape(tf.reduce_sum(input_y * input_param, 1), [-1, 1])
 loglik = tf.log(tf.reduce_sum(layer_actiontype_p * layer_actiontype))
 loss = tf.reduce_mean(loss_ * loglik)
 
-# 所有可训练的参数
-tvars = tf.trainable_variables()
-newGrads = tf.gradients(loss, tvars)
+# 不同类型操作需要训练的参数、loss、优化方法
+# 0调机，需要的参数：隐含层，动作类型，起飞机场，降落机场，起飞时间，飞机ID
+tvars_emptyflights = \
+    [v for v in tf.trainable_variables() if v.name in
+     ['w_hidden:0', 'b_hidden:0', 'w_actiontype:0', 'b_actiontype:0', 'w_airport_d:0', 'b_airport_d:0',
+      'w_airport_a:0', 'b_airport_a:0', 'w_time_d:0', 'b_time_d:0', 'w_plane:0', 'b_plane:0']]
+newGrads_emptyflights = tf.gradients(loss, tvars_emptyflights)
+
+# 1取消，需要的参数：隐含层，动作类型，航班ID
+tvars_cancel = \
+    [v for v in tf.trainable_variables() if v.name in
+     ['w_hidden:0', 'b_hidden:0', 'w_actiontype:0', 'b_actiontype:0', 'w_line:0', 'b_line:0']]
+newGrads_cancel = tf.gradients(loss, tvars_cancel)
+
+# 2换飞机，需要的参数：隐含层，动作类型，航班ID，调整的时间，飞机ID
+tvars_flightchange = \
+    [v for v in tf.trainable_variables() if v.name in
+     ['w_hidden:0', 'b_hidden:0', 'w_actiontype:0', 'b_actiontype:0', 'w_line:0', 'b_line:0',
+      'w_time_diff:0', 'b_time_diff:0', 'w_plane:0', 'b_plane:0']]
+newGrads_flightchange = tf.gradients(loss, tvars_flightchange)
+
+# 3调整时间，需要的参数：隐含层，动作类型，航班ID，调整的时间
+tvars_changetime = \
+    [v for v in tf.trainable_variables() if v.name in
+     ['w_hidden:0', 'b_hidden:0', 'w_actiontype:0', 'b_actiontype:0', 'w_line:0', 'b_line:0',
+      'w_time_diff:0', 'b_time_diff:0']]
+newGrads_changetime = tf.gradients(loss, tvars_changetime)
 
 # 优化器使用Adam算法
 adam = tf.train.AdamOptimizer(learning_rate=learning_rate)
@@ -152,18 +176,20 @@ with tf.Session() as sess:
     xs.append(x)
     #ys.append(np.array([610., 0., 5500., 0., 0., 0., 0.], dtype=np.float32))
     ys.append(np.array([611., 60., 0., 0., 0., 0., 0.], dtype=np.float32))
+    ys.append(np.array([611., 70., 0., 0., 0., 0., 0.], dtype=np.float32))
     print(ys)
     o1_, o2_, o3_ = sess.run([loss_, loglik, loss], feed_dict={input_x: xs, input_y: ys, input_param: loss_param})
     print(o1_)
     print(o2_)
     print(o3_)
 
-    '''
+
     gradBuffer = sess.run(tvars)
-    print('gradBuffer', np.array(gradBuffer).shape)
     for ix, grad in enumerate(gradBuffer):
+        print('ix', ix)
+        print('grad', np.array(grad).shape)
         gradBuffer[ix] = grad * 0
-    '''
+
     episode_number = 10
     while episode_number <= total_episodes:
         episode_number += 1
