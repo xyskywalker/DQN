@@ -30,8 +30,9 @@ train_list = list(range(len(arr_label)))
 #print(np.array(df_train[df_train[1]==352121004173837].drop([0, 1], axis=1)).shape)
 for i in range(20000):
     item_arr = np.zeros([1415, 61])
-    #print(arr_label[i][0])
-    item_temp = np.array(df_train[df_train[1]==arr_label[i][0]].drop([0, 1], axis=1))
+    #print(df_train[df_train[1]==arr_label[i][0]].sort_values(by=0, ascending=True))
+    #print(df_train[df_train[1]==arr_label[i][0]].sort_values(by=0, ascending=True).drop([0, 1], axis=1))
+    item_temp = np.array(df_train[df_train[1]==arr_label[i][0]].sort_values(by=0, ascending=True).drop([0, 1], axis=1))
     item_arr[0:len(item_temp), ] = item_temp
     #print(item_temp)
 
