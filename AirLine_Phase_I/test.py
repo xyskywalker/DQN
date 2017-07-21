@@ -64,6 +64,7 @@ conv4 = tfc.layers.convolution2d(inputs=conv3,
                                  padding='VALID',
                                  biases_initializer=None)
 
+
 pool1 = tfc.layers.max_pool2d(inputs=conv4, kernel_size=[1,1], stride=[10,1], padding='VALID')
 
 # 全连接层
