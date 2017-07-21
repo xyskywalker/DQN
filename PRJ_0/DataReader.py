@@ -20,6 +20,11 @@ print(arr_train[0][0])
 print(arr_train[0][1])
 print(arr_train[0][2])
 print(arr_train[0][3])
+print(datetime.datetime.now(), 'Start - Load Data')
+df_train = pd.DataFrame(arr_train)
+print(datetime.datetime.now(), 'End - Load Data')
+print(df_train[df_train[1] == 352120001523108])
+
 #print(csv_train.groupby(by='出院诊断病种名称')['出院诊断病种名称'].count())
 
 
