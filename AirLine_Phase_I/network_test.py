@@ -6,7 +6,7 @@ import tensorflow as tf
 import datetime
 
 # 训练总代数
-total_episodes = 2
+total_episodes = 100
 # 损失参数
 loss_param = np.array([100000, 0.5, 0.1, 0.1, 0.075, 0.01, 0.015] ,dtype=np.float32)
 # 最大允许的空飞航班数
@@ -31,8 +31,19 @@ env_len = env.shape[0] + max_emptyflights
 env_d = env.shape[1]
 # 隐含层节点数
 H = 500
-batch_size = 25
+batch_size = 5
 learning_rate = 0.01
+# Reward的discount比例
+gamma = 0.99
+
+# discount rewards函数
+def discount_rewards(r):
+    discounted_r = np.zeros_like(r)
+    running_add = 0
+    for t in reversed(range(r.size)):
+        running_add = running_add * gamma + r[t]
+        discounted_r[t] = running_add
+    return discounted_r
 
 # 各个输出层维度
 # 动作类型
@@ -138,6 +149,7 @@ B_plane_Grad = tf.placeholder(tf.float32, name='b_plane_grad')
 B_time_diff_Grad = tf.placeholder(tf.float32, name='b_time_diff_grad')
 B_time_d_Grad = tf.placeholder(tf.float32, name='b_time_d_grad')
 
+
 # 所有可训练的参数
 tvars_w_hidden = [v for v in tf.trainable_variables() if v.name == 'w_hidden:0' ][0]
 tvars_b_hidden = [v for v in tf.trainable_variables() if v.name == 'b_hidden:0' ][0]
@@ -155,6 +167,33 @@ tvars_w_time_diff = [v for v in tf.trainable_variables() if v.name == 'w_time_di
 tvars_b_time_diff = [v for v in tf.trainable_variables() if v.name == 'b_time_diff:0' ][0]
 tvars_w_time_d = [v for v in tf.trainable_variables() if v.name == 'w_time_d:0' ][0]
 tvars_b_time_d = [v for v in tf.trainable_variables() if v.name == 'b_time_d:0' ][0]
+
+
+# 每个Action的潜在价值
+advantages = tf.placeholder(tf.float32, [None, 1], name='reward_signal')
+# 所有可训练的参数
+tvars = [tvars_w_hidden, tvars_b_hidden, tvars_w_actiontype, tvars_b_actiontype, tvars_w_airport_d, tvars_b_airport_d,
+         tvars_w_airport_a, tvars_b_airport_a, tvars_w_line, tvars_b_line, tvars_w_plane, tvars_b_plane,
+         tvars_w_time_diff, tvars_b_time_diff, tvars_w_time_d, tvars_b_time_d]
+
+loglik_p_ = [tf.reduce_max(layer_actiontype_p, 1),
+             tf.reduce_max(layer_airport_d_p, 1),
+             tf.reduce_max(layer_airport_a_p, 1),
+             tf.reduce_max(layer_line_p, 1),
+             tf.reduce_max(layer_plane_p, 1),
+             tf.reduce_max(layer_time_diff_p, 1),
+             tf.reduce_max(layer_time_d_p, 1)]
+loglik_p = tf.reduce_mean(loglik_p_, 0)
+loglik = tf.reshape(tf.log(loglik_p), [-1, 1])
+loss = tf.reduce_mean((loss_ + advantages) / loglik)
+
+newGrads = tf.gradients(loss, tvars)
+
+batchGrad = [W_hidden_Grad, B_hidden_Grad, W_actiontype_Grad, B_actiontype_Grad, W_airport_d_Grad, B_airport_d_Grad,
+             W_airport_a_Grad, B_airport_a_Grad, W_line_Grad, B_line_Grad, W_plane_Grad, B_plane_Grad,
+             W_time_diff_Grad, B_time_diff_Grad, W_time_d_Grad, B_time_d_Grad]
+updateGrads = adam.apply_gradients(zip(batchGrad, tvars))
+
 
 # 0调机，需要的参数：隐含层，动作类型，起飞机场，降落机场，起飞时间，飞机ID
 # 需要计算个概率：动作类型，起飞机场，降落机场，起飞时间，飞机ID
@@ -228,28 +267,34 @@ with tf.Session() as sess:
     sess.run(init)
     xs = []
     ys = []
+    drs = []
 
-    x = envObj.env.copy().astype(np.float32)
-    x = np.reshape(x, [-1])
-    xs.append(x)
-    xs.append(x)
+    #x = envObj.env.copy().astype(np.float32)
+    #x = np.reshape(x, [-1])
+    #xs.append(x)
+    #xs.append(x)
     #ys.append(np.array([610., 0., 5500., 0., 0., 0., 0.], dtype=np.float32))
-    ys.append(np.array([611., 600., 0., 0., 0., 0., 0.], dtype=np.float32))
-    ys.append(np.array([611., 700., 0., 0., 0., 0., 0.], dtype=np.float32))
-    print(ys)
-    o1_, o2_, o3_ = sess.run([loglik_cancel_p, loglik_cancel, loss_cancel], feed_dict={input_x: xs, input_y: ys, input_param: loss_param})
-    print('loglik_cancel_p', o1_)
-    print('loglik_cancel', o2_)
-    print('loss_cancel', o3_)
+    #ys.append(np.array([611., 600., 0., 0., 0., 0., 0.], dtype=np.float32))
+    #ys.append(np.array([611., 700., 0., 0., 0., 0., 0.], dtype=np.float32))
+    #drs = []
+    #drs.append(-10000)
+    #drs.append(-20000)
+    #discounted_epr = discount_rewards(np.vstack(drs))
+    #print(discounted_epr)
+    #o1_, o2_, o3_, o4_ = sess.run([newGrads, loglik_p, loglik, loss], feed_dict={input_x: xs, advantages: discounted_epr})
+    #print('newGrads', o1_)
+    #print('loglik_p', o2_)
+    #print('loglik', o3_)
+    #print('loss', o4_)
 
 
-    #gradBuffer = sess.run(tvars_cancel)
-    #for ix, grad in enumerate(gradBuffer):
+    gradBuffer = sess.run(tvars)
+    for ix, grad in enumerate(gradBuffer):
     #    print('ix', ix)
     #    print('grad', np.array(grad).shape)
-    #    gradBuffer[ix] = grad * 0
+        gradBuffer[ix] = grad * 0
 
-    episode_number = 10
+    episode_number = 0
     while episode_number <= total_episodes:
         episode_number += 1
 
@@ -257,8 +302,11 @@ with tf.Session() as sess:
         end = False
         # 重置环境
         envObj.reset()
+
         # 保存初始环境与Loss计算值
         x = envObj.env.copy().astype(np.float32)
+        #x = (x - np.mean(x, axis=0))/np.std(x, axis=0)
+        x = (x - np.mean(x, axis=0)) / np.std(x, axis=0)
         x = np.reshape(x, [-1])
         xs.append(x)
         ys.append(envObj.loss_val)
@@ -313,28 +361,60 @@ with tf.Session() as sess:
                 action[4] = time_diff_[0] - (6 * 60)
                 action[5] = 0
 
+            # 默认loss值
+            default_loss_val = sum(envObj.loss_val * loss_param)
+
             #action = np.array([1, 3, 0, 0, 55, 0])
             #print('befor', envObj.env[0])
             end = envObj.step(action)
-            print(episode_number, envObj.action_count, action, envObj.loss_val)
 
-            #print('after', envObj.env[0])
-            # 保存动作执行后的环境与Loss计算值
-            x = envObj.env.copy().astype(np.float32)
-            x = np.reshape(x, [-1])
-            xs.append(x)
-            ys.append(envObj.loss_val)
+            # 执行动作之后的loss值
+            loss_val = sum(envObj.loss_val * loss_param)
+            # 差异
+            loss_val_diff = loss_val - default_loss_val
+
+            drs.append(loss_val_diff)
+
+            #print(episode_number, envObj.action_count, action, envObj.loss_val)
+
+            if end is False:
+                # 保存动作执行后的环境与Loss计算值
+                x = envObj.env.copy().astype(np.float32)
+                #x = (x - np.mean(x, axis=0)) / np.std(x, axis=0)
+                x = np.reshape(x, [-1])
+                xs.append(x)
+                ys.append(envObj.loss_val)
         print(episode_number, 'End')
 
-        #print(episode_number, 'Run newGrads')
-        #tGrad = sess.run(newGrads, feed_dict={input_x: xs, input_y: ys, input_param: loss_param})
-        #print('gradBuffer', np.array(tGrad).shape)
-        #for ix, grad in enumerate(tGrad):
-        #    gradBuffer[ix] += grad
+        print(episode_number, 'Run newGrads')
+        discounted_epr = discount_rewards(np.vstack(drs))
+        print('discounted_epr', discounted_epr)
+        #std_ = np.std(discounted_epr, axis=0)
+        #if std_ != 0:
+        #    discounted_epr = (discounted_epr - np.mean(discounted_epr, axis=0)) / std_  # 标准化
 
-        #if episode_number % batch_size == 0:
-        #    print(episode_number, 'Start update grad')
-        #    sess.run(updateGrads, feed_dict={W1Grad: gradBuffer[0], W2Grad: gradBuffer[1]})
-        #    for ix, grad in enumerate(gradBuffer):
-        #        gradBuffer[ix] = grad * 0
+        discounted_epr = (discounted_epr - np.mean(discounted_epr, axis=0)) / np.std(discounted_epr, axis=0)
+        t_loss, tGrad = sess.run([loss, newGrads], feed_dict={input_x: xs, input_y:ys, input_param: loss_param,
+                                                              advantages: discounted_epr})
+        print('loss', t_loss, '', envObj.loss_val)
+
+        #print('tGrad', tGrad)
+        xs, ys, drs = [], [], []
+
+        #print('gradBuffer', np.array(tGrad).shape)
+        for ix, grad in enumerate(tGrad):
+            gradBuffer[ix] += grad
+
+        if episode_number % batch_size == 0:
+            print(episode_number, 'Start update grad')
+            sess.run(updateGrads, feed_dict={W_hidden_Grad: gradBuffer[0], B_hidden_Grad: gradBuffer[1],
+                                             W_actiontype_Grad: gradBuffer[2], B_actiontype_Grad: gradBuffer[3],
+                                             W_airport_d_Grad: gradBuffer[4], B_airport_d_Grad: gradBuffer[5],
+                                             W_airport_a_Grad: gradBuffer[6], B_airport_a_Grad: gradBuffer[7],
+                                             W_line_Grad: gradBuffer[8], B_line_Grad: gradBuffer[9],
+                                             W_plane_Grad: gradBuffer[10], B_plane_Grad: gradBuffer[11],
+                                             W_time_diff_Grad: gradBuffer[12], B_time_diff_Grad: gradBuffer[13],
+                                             W_time_d_Grad: gradBuffer[14], B_time_d_Grad: gradBuffer[15]})
+            for ix, grad in enumerate(gradBuffer):
+                gradBuffer[ix] = grad * 0
 

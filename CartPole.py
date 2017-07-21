@@ -120,7 +120,12 @@ with tf.Session() as sess:
             xs, ys, drs = [], [], []
 
             # 计算每一步Action的潜在价值，然后减去均值再除以标准差，得到一个零均值标准差为1的分布，有利于训练的稳定
+            print('epr', epr)
+
             discounted_epr = discount_rewards(epr)
+
+            print('discounted_epr', discounted_epr)
+
             discounted_epr -= np.mean(discounted_epr)
             discounted_epr /= np.std(discounted_epr)
 
