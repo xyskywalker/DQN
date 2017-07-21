@@ -4,9 +4,9 @@ import pandas as pd
 import datetime
 import functools
 
-print(datetime.datetime.now(), 'Start - Load Data')
-#csv_train = pd.read_csv('df_train.csv')
-print(datetime.datetime.now(), 'End - Load Data')
+#print(datetime.datetime.now(), 'Start - Load Data')
+#csv_train = pd.read_csv('df_train.csv').fillna(value=0.0)
+#print(datetime.datetime.now(), 'End - Load Data')
 #csv_train.drop(['交易时间','申报受理时间', '住院开始时间','住院终止时间','操作时间','出院诊断病种名称'], axis=1, inplace=True)
 
 #np.save('arr_train.npy', csv_train)
@@ -16,6 +16,10 @@ print(datetime.datetime.now(), 'End - Load Data')
 
 print(arr_train)
 print(arr_train[0])
+print(arr_train[0][0])
+print(arr_train[0][1])
+print(arr_train[0][2])
+print(arr_train[0][3])
 #print(csv_train.groupby(by='出院诊断病种名称')['出院诊断病种名称'].count())
 
 
