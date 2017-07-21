@@ -14,16 +14,40 @@ print(datetime.datetime.now(), 'Start - Load Data')
 arr_train = np.load('arr_train.npy')
 print(datetime.datetime.now(), 'End - Load Data')
 
-print(arr_train)
-print(arr_train[0])
-print(arr_train[0][0])
-print(arr_train[0][1])
-print(arr_train[0][2])
-print(arr_train[0][3])
-print(datetime.datetime.now(), 'Start - Load Data')
+#print(arr_train)
+#print(arr_train[0])
+#print(arr_train[0][0])
+#print(arr_train[0][1])
+#print(arr_train[0][2])
+#print(arr_train[0][3])
+#print(datetime.datetime.now(), 'Start - Load Data')
 df_train = pd.DataFrame(arr_train)
-print(datetime.datetime.now(), 'End - Load Data')
-print(df_train[df_train[1] == 352120001523108])
+df_label = pd.read_csv('df_id_train.csv',header=-1, encoding='utf-8')
+arr_label = np.array(df_label)
+
+train_list = list(range(len(arr_label)))
+
+#print(np.array(df_train[df_train[1]==352121004173837].drop([0, 1], axis=1)).shape)
+for i in range(20000):
+    item_arr = np.zeros([1415, 61])
+    #print(arr_label[i][0])
+    item_temp = np.array(df_train[df_train[1]==arr_label[i][0]].drop([0, 1], axis=1))
+    item_arr[0:len(item_temp), ] = item_temp
+    #print(item_temp)
+
+    train_list[i] = item_arr
+
+    if i % 10 == 0:
+        print('Steps:', i)
+
+print(train_list)
+np.save('train_data.npy', train_list)
+
+
+
+
+#print(datetime.datetime.now(), 'End - Load Data')
+#print(df_train[df_train[1] == 352120001523108])
 
 #print(csv_train.groupby(by='出院诊断病种名称')['出院诊断病种名称'].count())
 
