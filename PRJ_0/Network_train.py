@@ -53,11 +53,14 @@ h_pool1_flat = tf.reshape(pool1, [-1, 171*2*64])
 # 激活函数
 h_fc1 = tf.nn.relu(tf.matmul(h_pool1_flat, W_fc1) + b_fc1)
 
+# Dropout层，避免过拟合
+keep_prob = tf.placeholder(tf.float32)
+h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob=keep_prob)
 
 # 输出层-动作类型
 w_actiontype = tf.get_variable('w_actiontype', shape=[1024, 2], initializer=tf.contrib.layers.xavier_initializer())
 b_actiontype = tf.get_variable('b_actiontype', shape=[2], initializer=tf.contrib.layers.xavier_initializer())
-layer_actiontype_p = tf.matmul(h_fc1, w_actiontype) + b_actiontype
+layer_actiontype_p = tf.matmul(h_fc1_drop, w_actiontype) + b_actiontype
 layer_actiontype = tf.nn.sigmoid(layer_actiontype_p)
 actiontype_output = tf.argmax(layer_actiontype, 1)
 
@@ -89,7 +92,7 @@ with tf.Session() as sess:
             xs = train_data[i_start:i_end]
             ys = np.reshape(arr_label[i_start:i_end, 1], [-1, 1])
 
-            o1_, o2_ = sess.run([cost, optimizer], feed_dict={envInput: xs, y_input: ys})
+            o1_, o2_ = sess.run([cost, optimizer], feed_dict={envInput: xs, y_input: ys, keep_prob: 0.5})
             cost_all += o1_
         cost_all = cost_all/400.0
         print('Epoch: ', e, ' Cost: ', cost_all)
