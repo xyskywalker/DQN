@@ -99,7 +99,7 @@ with tf.Session() as sess:
     for e in range(10000):
         cost_all = 0.0
         accuracy_all = 0.00
-        for i in range(400):
+        for i in range(320):
             i_start = 50 * i
             i_end = 50 * i + 50
             xs = train_data[i_start:i_end]
@@ -111,7 +111,7 @@ with tf.Session() as sess:
         cost_all = cost_all/400.0
         accuracy_all = accuracy_all/400.0
 
-        i_start = np.random.randint(0, 16000, [1])[0]
+        i_start = 16000
         i_end = i_start + 4000
         xs = train_data[i_start:i_end]
         y_ = arr_label[i_start:i_end, 1]
