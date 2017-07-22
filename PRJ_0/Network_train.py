@@ -72,6 +72,10 @@ cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=layer_actio
 # 使用了Adam算法来最小化成本函数
 optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 
+# 评估准确率的tensor
+correct_prediction = tf.equal(tf.argmax(layer_actiontype, 1), tf.argmax(y_input, 1))
+accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+
 print_activations(envInput)
 print_activations(envIn)
 print_activations(conv1)
@@ -86,13 +90,17 @@ with tf.Session() as sess:
     sess.run(init)
     for e in range(1000):
         cost_all = 0.0
+        accuracy_all = 0.00
         for i in range(400):
             i_start = 50 * i
             i_end = 50 * i + 50
             xs = train_data[i_start:i_end]
             ys = np.reshape(arr_label[i_start:i_end, 1], [-1, 1])
 
-            o1_, o2_ = sess.run([cost, optimizer], feed_dict={envInput: xs, y_input: ys, keep_prob: 0.5})
+            o1_, o2_, o3_ = sess.run([cost, optimizer, accuracy], feed_dict={envInput: xs, y_input: ys, keep_prob: 0.5})
             cost_all += o1_
+            accuracy_all += o3_
+
         cost_all = cost_all/400.0
-        print('Epoch: ', e, ' Cost: ', cost_all)
+        accuracy_all = accuracy_all/400.0
+        print('Epoch: ', e, ' Cost: ', cost_all, ' Accuracy: ', accuracy_all)
