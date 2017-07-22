@@ -76,7 +76,7 @@ reference_count = tf.cast(tf.reduce_sum(y_o), dtype=tf.float32)
 precision = tf.div(cross_count , prediction_count)
 recall = tf.div(cross_count , reference_count)
 
-f1 = tf.div(tf.multiply(2.0, tf.multiply(precision, recall)) , tf.add(precision, recall))
+f1 = tf.div(tf.multiply(2.0, tf.multiply(precision, recall)), tf.add(precision, recall))
 
 # 成本函数 reduce mean 降维->平均值
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=layer_actiontype_p, labels=y_onehot))
