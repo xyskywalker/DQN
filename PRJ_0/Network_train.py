@@ -57,8 +57,12 @@ h_fc1 = tf.nn.relu(tf.matmul(h_pool1_flat, W_fc1) + b_fc1)
 w_actiontype = tf.get_variable('w_actiontype', shape=[1024, 2], initializer=tf.contrib.layers.xavier_initializer())
 b_actiontype = tf.get_variable('b_actiontype', shape=[2], initializer=tf.contrib.layers.xavier_initializer())
 layer_actiontype_p = tf.matmul(h_fc1, w_actiontype) + b_actiontype
-layer_actiontype = tf.nn.softmax(layer_actiontype_p)
+layer_actiontype = tf.nn.sigmoid(layer_actiontype_p)
 actiontype_output = tf.argmax(layer_actiontype, 1)
+
+y_input = tf.placeholder(shape=[None, 1], dtype=tf.int32)
+#y_ = tf.reshape(y_input, [None, -1, 1])
+y_onehot = tf.one_hot(y_input, depth=2)
 
 print_activations(envInput)
 print_activations(envIn)
@@ -74,10 +78,10 @@ with tf.Session() as sess:
     sess.run(init)
 
     xs = train_data[0:10]
-    ys = arr_label[0:10,1]
+    ys = np.reshape(arr_label[0:10, 1], [-1, 1])
 
     print(xs)
     print(ys)
 
-    o_ = sess.run(actiontype_output, feed_dict={envInput: xs})
+    o_ = sess.run(y_onehot, feed_dict={y_input: ys})
     print(o_)
