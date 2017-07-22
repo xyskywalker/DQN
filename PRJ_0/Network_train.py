@@ -84,7 +84,7 @@ print_activations(layer_actiontype_p)
 with tf.Session() as sess:
     init = tf.global_variables_initializer()
     sess.run(init)
-    for e in range(100):
+    for e in range(1000):
         cost_all = 0.0
         for i in range(400):
             i_start = 50 * i
