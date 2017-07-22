@@ -81,12 +81,15 @@ print_activations(layer_actiontype_p)
 with tf.Session() as sess:
     init = tf.global_variables_initializer()
     sess.run(init)
+    for e in range(100):
+        cost_all = 0.0
+        for i in range(400):
+            i_start = 50 * i
+            i_end = 50 * i + 50
+            xs = train_data[i_start:i_end]
+            ys = np.reshape(arr_label[i_start:i_end, 1], [-1, 1])
 
-    for i in range(400):
-        i_start = 10 * i
-        i_end = 10 * i + 10
-        xs = train_data[i_start:i_end]
-        ys = np.reshape(arr_label[i_start:i_end, 1], [-1, 1])
-
-        o1_, o2_ = sess.run([cost, optimizer], feed_dict={envInput: xs, y_input: ys})
-        print('cost: ', o1_)
+            o1_, o2_ = sess.run([cost, optimizer], feed_dict={envInput: xs, y_input: ys})
+            cost_all += o1_
+        cost_all = cost_all/400.0
+        print('Epoch: ', e, ' Cost: ', cost_all)
