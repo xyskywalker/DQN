@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 import datetime
-import functools
+
 
 #print(datetime.datetime.now(), 'Start - Load Data')
 #csv_train = pd.read_csv('df_train.csv').fillna(value=0.0)
