@@ -16,6 +16,7 @@ def print_activations(t):
 
 env_len = 1415
 env_d = 61
+learning_rate = 0.001
 
 envInput = tf.placeholder(shape=[None, env_len, env_d], dtype=tf.float32)
 envIn = tf.reshape(envInput, shape=[-1, env_len, env_d, 1])
@@ -61,8 +62,12 @@ layer_actiontype = tf.nn.sigmoid(layer_actiontype_p)
 actiontype_output = tf.argmax(layer_actiontype, 1)
 
 y_input = tf.placeholder(shape=[None, 1], dtype=tf.int32)
-#y_ = tf.reshape(y_input, [None, -1, 1])
 y_onehot = tf.one_hot(y_input, depth=2)
+
+# 成本函数 reduce mean 降维->平均值
+cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=layer_actiontype_p, labels=y_onehot))
+# 使用了Adam算法来最小化成本函数
+optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 
 print_activations(envInput)
 print_activations(envIn)
@@ -77,11 +82,11 @@ with tf.Session() as sess:
     init = tf.global_variables_initializer()
     sess.run(init)
 
-    xs = train_data[0:10]
-    ys = np.reshape(arr_label[0:10, 1], [-1, 1])
+    for i in range(400):
+        i_start = 10 * i
+        i_end = 10 * i + 10
+        xs = train_data[i_start:i_end]
+        ys = np.reshape(arr_label[i_start:i_end, 1], [-1, 1])
 
-    print(xs)
-    print(ys)
-
-    o_ = sess.run(y_onehot, feed_dict={y_input: ys})
-    print(o_)
+        o1_, o2_ = sess.run([cost, optimizer], feed_dict={envInput: xs, y_input: ys})
+        print('cost: ', o1_)
