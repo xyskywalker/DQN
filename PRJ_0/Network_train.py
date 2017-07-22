@@ -67,14 +67,22 @@ actiontype_output = tf.argmax(layer_actiontype, 1)
 y_input = tf.placeholder(shape=[None, 1], dtype=tf.int32)
 y_onehot = tf.one_hot(y_input, depth=2)
 
+y_o = tf.placeholder(shape=[4000], dtype=tf.int64)
+
+cross_count = tf.cast(tf.reduce_sum(tf.multiply(actiontype_output, y_o)), dtype=tf.float32)
+prediction_count = tf.cast(tf.reduce_sum(actiontype_output), dtype=tf.float32)
+reference_count = tf.cast(tf.reduce_sum(y_o), dtype=tf.float32)
+
+precision = tf.div(cross_count , prediction_count)
+recall = tf.div(cross_count , reference_count)
+
+f1 = tf.div(tf.multiply(2.0, tf.multiply(precision, recall)) , tf.add(precision, recall))
+
 # 成本函数 reduce mean 降维->平均值
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=layer_actiontype_p, labels=y_onehot))
 # 使用了Adam算法来最小化成本函数
+#cost = 1 / f1
 optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
-
-# 评估准确率的tensor
-correct_prediction = tf.equal(tf.argmax(layer_actiontype, 1), tf.argmax(y_input, 1))
-accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 
 print_activations(envInput)
 print_activations(envIn)
@@ -88,7 +96,7 @@ print_activations(layer_actiontype_p)
 with tf.Session() as sess:
     init = tf.global_variables_initializer()
     sess.run(init)
-    for e in range(1000):
+    for e in range(10000):
         cost_all = 0.0
         accuracy_all = 0.00
         for i in range(400):
@@ -97,10 +105,18 @@ with tf.Session() as sess:
             xs = train_data[i_start:i_end]
             ys = np.reshape(arr_label[i_start:i_end, 1], [-1, 1])
 
-            o1_, o2_, o3_ = sess.run([cost, optimizer, accuracy], feed_dict={envInput: xs, y_input: ys, keep_prob: 0.5})
+            o1_, o2_ = sess.run([cost, optimizer], feed_dict={envInput: xs, y_input: ys, keep_prob: 0.7})
             cost_all += o1_
-            accuracy_all += o3_
 
         cost_all = cost_all/400.0
         accuracy_all = accuracy_all/400.0
-        print('Epoch: ', e, ' Cost: ', cost_all, ' Accuracy: ', accuracy_all)
+
+        i_start = np.random.randint(0, 16000, [1])[0]
+        i_end = i_start + 4000
+        xs = train_data[i_start:i_end]
+        y_ = arr_label[i_start:i_end, 1]
+        ys = np.reshape(y_, [-1, 1])
+        print('e', e, 'cost', cost_all)
+
+        t_, o1_, o3_ = sess.run([precision, recall, f1], feed_dict={envInput: xs, y_input: ys, keep_prob: 1.0, y_o: y_})
+        print('precision: ', t_, ' recall: ', o1_, ' F1: ', o3_)
