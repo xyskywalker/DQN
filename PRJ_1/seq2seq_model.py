@@ -4,8 +4,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import random
 import math
+import pandas as pd
 
 train_data = np.load('train_data_1.npy')
+train_data = np.array(pd.DataFrame(train_data).sort_values(by=[7,0]))
 
 def normalize(X, Y=None):
     """
