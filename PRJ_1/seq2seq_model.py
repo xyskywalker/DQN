@@ -1,6 +1,8 @@
 import tensorflow as tf  # Version 1.0 or 0.12
 import tensorflow.contrib as tfc
 import numpy as np
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import random
 import math
@@ -21,15 +23,16 @@ def generate_x_y_data(isTrain=True, batch_size=3):
     batch_y = []
     for b_ in range(batch_size):
         #处理哪个分钟段
-        range_i = random.randint(0, 720)
+        range_i = random.randint(0, 719)
         #每段中开始数
         i_start = range_i * 92
-        rand = random.randint(i_start, i_start + 720 - seq_length * 4)
+        rand = random.randint(i_start, i_start + 720 - seq_length * 2)
 
         if isTrain is False:
-            rand = i_start + 720 - (seq_length * 2)
+            rand = i_start + 720 - (seq_length )
 
         sig1 = train_data[rand: rand + seq_length * 2, 1:9]
+        sig2 = train_data[rand+720: rand+720 + seq_length * 2, 1:9]
 
         x1 = sig1[:seq_length, 0]
         x2 = sig1[:seq_length, 1]
@@ -38,7 +41,7 @@ def generate_x_y_data(isTrain=True, batch_size=3):
         x5 = sig1[:seq_length, 4]
         x6 = sig1[:seq_length, 5]
         x8 = sig1[:seq_length, 7]
-        y1 = sig1[seq_length:, 7]
+        y1 = sig2[:seq_length, 7]
 
         #x_ = np.array([x1])
         x_ = np.array([x1, x2, x3, x4, x5, x6, x8])
@@ -81,7 +84,7 @@ layers_stacked_count = 5
 learning_rate = 0.007  # Small lr helps not to diverge during training.
 # How many times we perform a training step (therefore how many times we
 # show a batch).
-nb_iters = 1000
+nb_iters = 500000
 lr_decay = 0.92  # default: 0.9 . Simulated annealing.
 momentum = 0.5  # default: 0.0 . Momentum technique in weights update
 lambda_l2_reg = 0.003  # L2 regularization of weights - avoids overfitting

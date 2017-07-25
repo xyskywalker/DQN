@@ -61,7 +61,7 @@ h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob=keep_prob)
 w_actiontype = tf.get_variable('w_actiontype', shape=[1024, 2], initializer=tf.contrib.layers.xavier_initializer())
 b_actiontype = tf.get_variable('b_actiontype', shape=[2], initializer=tf.contrib.layers.xavier_initializer())
 layer_actiontype_p = tf.matmul(h_fc1_drop, w_actiontype) + b_actiontype
-layer_actiontype = tf.nn.sigmoid(layer_actiontype_p)
+layer_actiontype = tf.nn.softmax(layer_actiontype_p)
 actiontype_output = tf.argmax(layer_actiontype, 1)
 
 y_input = tf.placeholder(shape=[None, 1], dtype=tf.int32)
@@ -93,7 +93,7 @@ f1 = tf.div(tf.multiply(2.0, tf.multiply(precision, recall)), tf.add(tf.add(prec
 # 成本函数 reduce mean 降维->平均值
 cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=layer_actiontype_p, labels=y_onehot))
 # 使用了Adam算法来最小化成本函数
-cost2 = (1 - f1) * tf.reduce_mean(layer_actiontype * y_onehot)
+cost2 = (1 - f1) * cost * 10
 optimizer2 = tf.train.AdamOptimizer(learning_rate).minimize(cost2)
 optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 
@@ -112,22 +112,22 @@ with tf.Session() as sess:
     for e in range(10000):
         cost_all = 0.0
         accuracy_all = 0.00
-        for i in range(16):
+        for i in range(18):
             i_start = 1000 * i
             i_end = 1000 * i + 1000
             xs = train_data[i_start:i_end]
             y_ = arr_label[i_start:i_end, 1]
             ys = np.reshape(y_, [-1, 1])
 
-            o1_, o2_,cross_count_, f1_ = sess.run([cost2, optimizer2, cross_count, f1], feed_dict={envInput: xs, y_input: ys, keep_prob: 0.5, y_o: y_})
+            o1_, o2_,cross_count_, f1_ = sess.run([cost2, optimizer2, cross_count, f1], feed_dict={envInput: xs, y_input: ys, keep_prob: 0.1, y_o: y_})
             cost_all += o1_
             print('Cost:', o1_, 'F1', f1_, 'cross_count', cross_count_)
 
-        cost_all = cost_all/16.0
-        accuracy_all = accuracy_all/16.0
+        cost_all = cost_all/18.0
+        accuracy_all = accuracy_all/18.0
 
-        i_start = 16000
-        i_end = i_start + 1000
+        i_start = 18000
+        i_end = i_start + 2000
         xs = train_data[i_start:i_end]
         y_ = arr_label[i_start:i_end, 1]
         ys = np.reshape(y_, [-1, 1])
