@@ -48,7 +48,7 @@ def generate_x_y_data(isTrain=True, batch_size=3):
         rand = random.randint(i_start, i_start + 720 - seq_length)
 
         if isTrain is False:
-            rand = random.randint(i_start + 720 - (seq_length * 2), i_start, i_start + 720)
+            rand = random.randint(i_start + 720 - (seq_length * 2),  i_start + 720)
 
         sig1 = train_data[rand: rand + seq_length * 2, 1:9]
 
