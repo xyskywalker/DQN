@@ -292,7 +292,7 @@ for j in range(nb_predictions):
     plt.figure(figsize=(12, 3))
 
     for k in range(output_dim):
-        past = X[:, j, k]
+        past = X[:, j, 7]
         expected = Y[:, j, k]
         pred = outputs[:, j, k]
 
