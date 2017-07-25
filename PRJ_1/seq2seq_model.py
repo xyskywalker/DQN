@@ -40,11 +40,15 @@ def generate_x_y_data(isTrain=True, batch_size=3):
 
     batch_x = []
     batch_y = []
-    for _ in range(batch_size):
-        rand = random.randint(0, 66000 - seq_length * 2)
+    for b_ in range(batch_size):
+        #处理哪个分钟段
+        range_i = random.randint(0, 720)
+        #每段中开始数
+        i_start = range_i * 92
+        rand = random.randint(i_start, i_start + 720 - seq_length)
 
         if isTrain is False:
-            rand = random.randint(66000, 66239 - seq_length * 2)
+            rand = random.randint(i_start + 720 - (seq_length * 2), i_start, i_start + 720)
 
         sig1 = train_data[rand: rand + seq_length * 2, 1:9]
 
