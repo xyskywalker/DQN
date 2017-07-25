@@ -84,14 +84,14 @@ print("(seq_length, batch_size, output_dim)")
 # Internal neural network parameters
 # Time series will have the same past and future (to be predicted) lenght.
 seq_length = sample_x.shape[0]
-batch_size = 5  # Low value used for live demo purposes - 100 and 1000 would be possible too, crank that up!
+batch_size = 100  # Low value used for live demo purposes - 100 and 1000 would be possible too, crank that up!
 
 # Output dimension (e.g.: multiple signals at once, tied in time)
 input_dim = sample_x.shape[-1]
 output_dim = sample_y.shape[-1]
-hidden_dim = 12  # Count of hidden neurons in the recurrent units.
+hidden_dim = 100  # Count of hidden neurons in the recurrent units.
 # Number of stacked recurrent cells, on the neural depth axis.
-layers_stacked_count = 2
+layers_stacked_count = 5
 
 # Optmizer:
 learning_rate = 0.007  # Small lr helps not to diverge during training.
@@ -247,16 +247,20 @@ train_losses = []
 test_losses = []
 
 sess.run(tf.global_variables_initializer())
+
+train_loss_all = 0.0
 for t in range(nb_iters + 1):
     train_loss = train_batch(batch_size)
     train_losses.append(train_loss)
+    train_loss_all += train_loss
 
     if t % 10 == 0:
         # Tester
         test_loss = test_batch(batch_size)
         test_losses.append(test_loss)
         print("Step {}/{}, train loss: {}, \tTEST loss: {}".format(t,
-                                                                   nb_iters, train_loss, test_loss))
+                                                                   nb_iters, train_loss_all / 10.0, test_loss))
+        train_loss_all = 0.0
 
 print("Fin. train loss: {}, \tTEST loss: {}".format(train_loss, test_loss))
 
