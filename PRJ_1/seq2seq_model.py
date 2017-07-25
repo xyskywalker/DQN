@@ -7,6 +7,25 @@ import math
 
 train_data = np.load('train_data_1.npy')
 
+def normalize(X, Y=None):
+    """
+    Normalise X and Y according to the mean and standard deviation of the X values only.
+    """
+    # # It would be possible to normalize with last rather than mean, such as:
+    # lasts = np.expand_dims(X[:, -1, :], axis=1)
+    # assert (lasts[:, :] == X[:, -1, :]).all(), "{}, {}, {}. {}".format(lasts[:, :].shape, X[:, -1, :].shape, lasts[:, :], X[:, -1, :])
+    mean = np.expand_dims(np.average(X, axis=1) + 0.00001, axis=1)
+    stddev = np.expand_dims(np.std(X, axis=1) + 0.00001, axis=1)
+    print (mean.shape, stddev.shape)
+    print (X.shape, Y.shape)
+    X = X - mean
+    X = X / (2.5 * stddev)
+    if Y is not None:
+        #assert Y.shape == X.shape, (Y.shape, X.shape)
+        Y = Y - mean[:,0,6]
+        Y = Y / (2.5 * stddev[:,0,6])
+        return X, Y
+    return X
 
 def generate_x_y_data(isTrain=True, batch_size=3):
     seq_length = 30
@@ -19,12 +38,19 @@ def generate_x_y_data(isTrain=True, batch_size=3):
         if isTrain is False:
             rand = random.randint(66000, 66239 - seq_length * 2)
 
-        sig1 = train_data[rand : rand + seq_length * 2]
+        sig1 = train_data[rand: rand + seq_length * 2, 1:9]
 
-        x1 = sig1[:seq_length]
-        y1 = sig1[seq_length:]
+        x1 = sig1[:seq_length, 0]
+        x2 = sig1[:seq_length, 1]
+        x3 = sig1[:seq_length, 2]
+        x4 = sig1[:seq_length, 3]
+        x5 = sig1[:seq_length, 4]
+        x6 = sig1[:seq_length, 5]
+        x7 = sig1[:seq_length, 6]
+        x8 = sig1[:seq_length, 7]
+        y1 = sig1[seq_length:, 7]
 
-        x_ = np.array([x1])
+        x_ = np.array([x1, x2, x3, x4, x5, x6, x7, x8])
         y_ = np.array([y1])
         x_, y_ = x_.T, y_.T
 
@@ -38,13 +64,15 @@ def generate_x_y_data(isTrain=True, batch_size=3):
     batch_x = np.array(batch_x).transpose((1, 0, 2))
     batch_y = np.array(batch_y).transpose((1, 0, 2))
     # shape: (seq_length, batch_size, output_dim)
-
+    #batch_x, batch_y = normalize(batch_x, batch_y)
     return batch_x, batch_y
 
 sample_x, sample_y = generate_x_y_data(isTrain=True, batch_size=3)
 print("Dimensions of the dataset for 3 X and 3 Y training examples : ")
 print(sample_x.shape)
+print(sample_x)
 print(sample_y.shape)
+print(sample_y)
 print("(seq_length, batch_size, output_dim)")
 
 # Internal neural network parameters
@@ -63,7 +91,7 @@ layers_stacked_count = 2
 learning_rate = 0.007  # Small lr helps not to diverge during training.
 # How many times we perform a training step (therefore how many times we
 # show a batch).
-nb_iters = 15000
+nb_iters = 3000
 lr_decay = 0.92  # default: 0.9 . Simulated annealing.
 momentum = 0.5  # default: 0.0 . Momentum technique in weights update
 lambda_l2_reg = 0.003  # L2 regularization of weights - avoids overfitting
