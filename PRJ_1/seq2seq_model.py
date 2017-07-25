@@ -7,6 +7,57 @@ import math
 
 train_data = np.load('train_data_1.npy')
 
+def generate_x_y_data(isTrain, batch_size):
+    """
+    Data for exercise 1.
+
+    returns: tuple (X, Y)
+        X is a sine and a cosine from 0.0*pi to 1.5*pi
+        Y is a sine and a cosine from 1.5*pi to 3.0*pi
+    Therefore, Y follows X. There is also a random offset
+    commonly applied to X an Y.
+
+    The returned arrays are of shape:
+        (seq_length, batch_size, output_dim)
+        Therefore: (10, batch_size, 2)
+
+    For this exercise, let's ignore the "isTrain"
+    argument and test on the same data.
+    """
+    seq_length = 10
+
+    batch_x = []
+    batch_y = []
+    for _ in range(batch_size):
+        rand = random.random() * 2 * math.pi
+
+        sig1 = np.sin(np.linspace(0.0 * math.pi + rand,
+                                  3.0 * math.pi + rand, seq_length * 2))
+        sig2 = np.cos(np.linspace(0.0 * math.pi + rand,
+                                  3.0 * math.pi + rand, seq_length * 2))
+        x1 = sig1[:seq_length]
+        y1 = sig1[seq_length:]
+        x2 = sig2[:seq_length]
+        y2 = sig2[seq_length:]
+
+        x_ = np.array([x1, x2])
+        y_ = np.array([y1, y2])
+        x_, y_ = x_.T, y_.T
+
+        batch_x.append(x_)
+        batch_y.append(y_)
+
+    batch_x = np.array(batch_x)
+    batch_y = np.array(batch_y)
+    # shape: (batch_size, seq_length, output_dim)
+
+    batch_x = np.array(batch_x).transpose((1, 0, 2))
+    batch_y = np.array(batch_y).transpose((1, 0, 2))
+    # shape: (seq_length, batch_size, output_dim)
+
+    return batch_x, batch_y
+
+
 def normalize(X, Y=None):
     """
     Normalise X and Y according to the mean and standard deviation of the X values only.
@@ -27,7 +78,7 @@ def normalize(X, Y=None):
         return X, Y
     return X
 
-def generate_x_y_data(isTrain=True, batch_size=3):
+def generate_x_y_data_1(isTrain=True, batch_size=3):
     seq_length = 30
 
     batch_x = []
@@ -40,17 +91,18 @@ def generate_x_y_data(isTrain=True, batch_size=3):
 
         sig1 = train_data[rand: rand + seq_length * 2, 1:9]
 
-        x1 = sig1[:seq_length, 0]
-        x2 = sig1[:seq_length, 1]
-        x3 = sig1[:seq_length, 2]
-        x4 = sig1[:seq_length, 3]
-        x5 = sig1[:seq_length, 4]
-        x6 = sig1[:seq_length, 5]
-        x7 = sig1[:seq_length, 6]
-        x8 = sig1[:seq_length, 7]
-        y1 = sig1[seq_length:, 7]
+        x1 = sig1[:seq_length, 6]
+        #x2 = sig1[:seq_length, 1]
+        #x3 = sig1[:seq_length, 2]
+        #x4 = sig1[:seq_length, 3]
+        #x5 = sig1[:seq_length, 4]
+        #x6 = sig1[:seq_length, 5]
+        #x7 = sig1[:seq_length, 6]
+        #x8 = sig1[:seq_length, 7]
+        y1 = sig1[seq_length:, 6]
 
-        x_ = np.array([x1, x2, x3, x4, x5, x6, x7, x8])
+        x_ = np.array([x1])
+        #x_ = np.array([x1, x2, x3, x4, x5, x6, x7, x8])
         y_ = np.array([y1])
         x_, y_ = x_.T, y_.T
 
@@ -82,7 +134,7 @@ batch_size = 5  # Low value used for live demo purposes - 100 and 1000 would be 
 
 # Output dimension (e.g.: multiple signals at once, tied in time)
 input_dim = sample_x.shape[-1]
-output_dim = 1
+output_dim = sample_y.shape[-1]
 hidden_dim = 12  # Count of hidden neurons in the recurrent units.
 # Number of stacked recurrent cells, on the neural depth axis.
 layers_stacked_count = 2
@@ -91,7 +143,7 @@ layers_stacked_count = 2
 learning_rate = 0.007  # Small lr helps not to diverge during training.
 # How many times we perform a training step (therefore how many times we
 # show a batch).
-nb_iters = 3000
+nb_iters = 1500
 lr_decay = 0.92  # default: 0.9 . Simulated annealing.
 momentum = 0.5  # default: 0.0 . Momentum technique in weights update
 lambda_l2_reg = 0.003  # L2 regularization of weights - avoids overfitting
@@ -292,7 +344,7 @@ for j in range(nb_predictions):
     plt.figure(figsize=(12, 3))
 
     for k in range(output_dim):
-        past = X[:, j, 7]
+        past = X[:, j, k]
         expected = Y[:, j, k]
         pred = outputs[:, j, k]
 
