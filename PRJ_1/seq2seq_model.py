@@ -1,32 +1,45 @@
-exercise = 5  # Possible values: 1, 2, 3, 4 or 5.
-
-from  PRJ_1.datasets import generate_x_y_data_v1, generate_x_y_data_v2, generate_x_y_data_v3, generate_x_y_data_v4
-
-# We choose which data function to use below, in function of the exericse.
-if exercise == 1:
-    generate_x_y_data = generate_x_y_data_v1
-if exercise == 2:
-    generate_x_y_data = generate_x_y_data_v2
-if exercise in [3, 4]:
-    # exercises 3 and 4 uses the same data.
-    generate_x_y_data = generate_x_y_data_v3
-if exercise == 5:
-    generate_x_y_data = generate_x_y_data_v4
-
-
-# In[2]:
-
-
 import tensorflow as tf  # Version 1.0 or 0.12
 import tensorflow.contrib as tfc
 import numpy as np
 import matplotlib.pyplot as plt
+import random
+import math
+
+train_data = np.load('train_data_1.npy')
 
 
-# ## Neural network's hyperparameters
+def generate_x_y_data(isTrain=True, batch_size=3):
+    seq_length = 30
 
-# In[3]:
+    batch_x = []
+    batch_y = []
+    for _ in range(batch_size):
+        rand = random.randint(0, 66000 - seq_length * 2)
 
+        if isTrain is False:
+            rand = random.randint(66000, 66239 - seq_length * 2)
+
+        sig1 = train_data[rand : rand + seq_length * 2]
+
+        x1 = sig1[:seq_length]
+        y1 = sig1[seq_length:]
+
+        x_ = np.array([x1])
+        y_ = np.array([y1])
+        x_, y_ = x_.T, y_.T
+
+        batch_x.append(x_)
+        batch_y.append(y_)
+
+    batch_x = np.array(batch_x)
+    batch_y = np.array(batch_y)
+    # shape: (batch_size, seq_length, output_dim)
+
+    batch_x = np.array(batch_x).transpose((1, 0, 2))
+    batch_y = np.array(batch_y).transpose((1, 0, 2))
+    # shape: (seq_length, batch_size, output_dim)
+
+    return batch_x, batch_y
 
 sample_x, sample_y = generate_x_y_data(isTrain=True, batch_size=3)
 print("Dimensions of the dataset for 3 X and 3 Y training examples : ")
@@ -40,7 +53,8 @@ seq_length = sample_x.shape[0]
 batch_size = 5  # Low value used for live demo purposes - 100 and 1000 would be possible too, crank that up!
 
 # Output dimension (e.g.: multiple signals at once, tied in time)
-output_dim = input_dim = sample_x.shape[-1]
+input_dim = sample_x.shape[-1]
+output_dim = 1
 hidden_dim = 12  # Count of hidden neurons in the recurrent units.
 # Number of stacked recurrent cells, on the neural depth axis.
 layers_stacked_count = 2
@@ -49,7 +63,7 @@ layers_stacked_count = 2
 learning_rate = 0.007  # Small lr helps not to diverge during training.
 # How many times we perform a training step (therefore how many times we
 # show a batch).
-nb_iters = 150
+nb_iters = 15000
 lr_decay = 0.92  # default: 0.9 . Simulated annealing.
 momentum = 0.5  # default: 0.0 . Momentum technique in weights update
 lambda_l2_reg = 0.003  # L2 regularization of weights - avoids overfitting
@@ -217,6 +231,7 @@ print("Fin. train loss: {}, \tTEST loss: {}".format(train_loss, test_loss))
 
 
 # Plot loss over time:
+'''
 plt.figure(figsize=(12, 6))
 plt.plot(
     np.array(range(0, len(test_losses))) /
@@ -233,7 +248,7 @@ plt.xlabel('Iteration')
 plt.ylabel('log(Loss)')
 plt.legend(loc='best')
 plt.show()
-
+'''
 
 # In[9]:
 
