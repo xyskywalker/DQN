@@ -18,11 +18,14 @@ def normalize(X, Y=None):
     stddevX = np.expand_dims(np.std(X, axis=1) + 0.00001, axis=1)
     #print (meanX.shape, stddevX.shape)
     #print (X.shape, Y.shape)
+
+    meanY = np.expand_dims(meanX[:,:,6], axis=1)
+    stddevY = np.expand_dims(stddevX[:,:,6], axis=1)
+
+
     X = X - meanX
     X = X / (2.5 * stddevX)
     if Y is not None:
-        meanY = np.expand_dims(np.average(Y, axis=1) + 0.00001, axis=1)
-        stddevY = np.expand_dims(np.std(Y, axis=1) + 0.00001, axis=1)
         # print (meanX.shape, stddevX.shape)
         # print (X.shape, Y.shape)
         Y = Y - meanY
