@@ -24,9 +24,7 @@ import matplotlib.pyplot as plt
 train_data = np.load('train_data_1.npy')
 df_train_data = pd.DataFrame(train_data).sort_values(by=[7,0])
 
-print(np.array(df_train_data)[0:30,8])
-#rint(train_data[:,8])
-plt.plot(np.array(df_train_data)[0:160,8])
+plt.plot(np.array(df_train_data)[1440 + 720:1440+ 720 + 60,8])
 plt.show()
 
 

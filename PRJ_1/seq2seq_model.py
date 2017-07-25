@@ -8,32 +8,11 @@ import pandas as pd
 
 train_data = np.load('train_data_1.npy')
 train_data = np.array(pd.DataFrame(train_data).sort_values(by=[7,0]))
+mean = np.expand_dims(np.average(train_data, axis=1) + 0.00001, axis=1)
+stddev = np.expand_dims(np.std(train_data, axis=1) + 0.00001, axis=1)
 
-def normalize(X, Y=None):
-    """
-    Normalise X and Y according to the mean and standard deviation of the X values only.
-    """
-    # # It would be possible to normalize with last rather than mean, such as:
-    # lasts = np.expand_dims(X[:, -1, :], axis=1)
-    # assert (lasts[:, :] == X[:, -1, :]).all(), "{}, {}, {}. {}".format(lasts[:, :].shape, X[:, -1, :].shape, lasts[:, :], X[:, -1, :])
-    meanX = np.expand_dims(np.average(X, axis=1) + 0.00001, axis=1)
-    stddevX = np.expand_dims(np.std(X, axis=1) + 0.00001, axis=1)
-    #print (meanX.shape, stddevX.shape)
-    #print (X.shape, Y.shape)
-
-    meanY = np.expand_dims(meanX[:,:,6], axis=1)
-    stddevY = np.expand_dims(stddevX[:,:,6], axis=1)
-
-
-    X = X - meanX
-    X = X / (2.5 * stddevX)
-    if Y is not None:
-        # print (meanX.shape, stddevX.shape)
-        # print (X.shape, Y.shape)
-        Y = Y - meanY
-        Y = Y / (2.5 * stddevY)
-        return X, Y
-    return X
+train_data = train_data - mean
+train_data = train_data / stddev
 
 def generate_x_y_data(isTrain=True, batch_size=3):
     seq_length = 30
@@ -45,7 +24,7 @@ def generate_x_y_data(isTrain=True, batch_size=3):
         range_i = random.randint(0, 720)
         #每段中开始数
         i_start = range_i * 92
-        rand = random.randint(i_start, i_start + 720 - seq_length)
+        rand = random.randint(i_start, i_start + 720 - seq_length * 2)
 
         if isTrain is False:
             rand = random.randint(i_start + 720 - (seq_length * 2),  i_start + 720)
@@ -76,7 +55,6 @@ def generate_x_y_data(isTrain=True, batch_size=3):
     batch_x = np.array(batch_x).transpose((1, 0, 2))
     batch_y = np.array(batch_y).transpose((1, 0, 2))
     # shape: (seq_length, batch_size, output_dim)
-    batch_x, batch_y = normalize(batch_x, batch_y)
     return batch_x, batch_y
 
 sample_x, sample_y = generate_x_y_data(isTrain=True, batch_size=3)
@@ -103,7 +81,7 @@ layers_stacked_count = 5
 learning_rate = 0.007  # Small lr helps not to diverge during training.
 # How many times we perform a training step (therefore how many times we
 # show a batch).
-nb_iters = 100000
+nb_iters = 1000
 lr_decay = 0.92  # default: 0.9 . Simulated annealing.
 momentum = 0.5  # default: 0.0 . Momentum technique in weights update
 lambda_l2_reg = 0.003  # L2 regularization of weights - avoids overfitting
@@ -308,7 +286,7 @@ for j in range(nb_predictions):
     plt.figure(figsize=(12, 3))
 
     for k in range(output_dim):
-        past = X[:, j, 7]
+        past = X[:, j, 6]
         expected = Y[:, j, k]
         pred = outputs[:, j, k]
 
