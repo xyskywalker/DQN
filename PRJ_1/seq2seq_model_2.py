@@ -96,7 +96,7 @@ batch_size = 100  # Low value used for live demo purposes - 100 and 1000 would b
 # Output dimension (e.g.: multiple signals at once, tied in time)
 input_dim = sample_x.shape[-1]
 output_dim = sample_y.shape[-1]
-hidden_dim = 100  # Count of hidden neurons in the recurrent units.
+hidden_dim = 35  # Count of hidden neurons in the recurrent units.
 # Number of stacked recurrent cells, on the neural depth axis.
 layers_stacked_count = 2
 
@@ -104,7 +104,7 @@ layers_stacked_count = 2
 learning_rate = 0.007  # Small lr helps not to diverge during training.
 # How many times we perform a training step (therefore how many times we
 # show a batch).
-nb_iters = 500000
+nb_iters = 2000
 lr_decay = 0.92  # default: 0.9 . Simulated annealing.
 momentum = 0.5  # default: 0.0 . Momentum technique in weights update
 lambda_l2_reg = 0.003  # L2 regularization of weights - avoids overfitting
