@@ -104,7 +104,7 @@ layers_stacked_count = 2
 learning_rate = 0.007  # Small lr helps not to diverge during training.
 # How many times we perform a training step (therefore how many times we
 # show a batch).
-nb_iters = 2000
+nb_iters = 500000
 lr_decay = 0.92  # default: 0.9 . Simulated annealing.
 momentum = 0.5  # default: 0.0 . Momentum technique in weights update
 lambda_l2_reg = 0.003  # L2 regularization of weights - avoids overfitting
@@ -291,9 +291,6 @@ for t in range(nb_iters + 1):
         print("Step {}/{}, train loss: {}, \tTEST MAPE: {}".format(t,
                                                                    nb_iters, train_loss_all / 10.0, test_loss))
         train_loss_all = 0.0
-
-print("Fin. train loss: {}, \tTEST loss: {}".format(train_loss, test_loss))
-
 
 # In[8]:
 
