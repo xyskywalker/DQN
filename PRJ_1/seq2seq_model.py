@@ -49,8 +49,8 @@ def generate_x_y_data(isTrain=True, batch_size=3):
             # 处理哪个分钟段
             range_i = random.randint(0, 58)
             # 每段中开始数
-            sig1 = train_data[range_i: range_i + seq_length, 1:9]
-            sig2 = train_data[range_i + 30: range_i + 30 + seq_length, 1:9]
+            sig1 = test_data[range_i: range_i + seq_length, 1:9]
+            sig2 = test_data[range_i + 30: range_i + 30 + seq_length, 1:9]
 
         x1 = sig1[:seq_length, 0]
         x2 = sig1[:seq_length, 1]
