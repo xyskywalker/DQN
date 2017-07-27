@@ -96,7 +96,7 @@ input_dim = sample_x.shape[-1]
 output_dim = sample_y.shape[-1]
 hidden_dim = 100  # Count of hidden neurons in the recurrent units.
 # Number of stacked recurrent cells, on the neural depth axis.
-layers_stacked_count = 3
+layers_stacked_count = 2
 
 # Optmizer:
 learning_rate = 0.007  # Small lr helps not to diverge during training.
