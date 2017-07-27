@@ -26,13 +26,13 @@ def generate_x_y_data(isTrain=True, batch_size=3):
         range_i = random.randint(0, 719)
         #每段中开始数
         i_start = range_i * 92
-        rand = random.randint(i_start, i_start + 720 - seq_length * 2)
+        rand = random.randint(i_start, i_start + 92 - seq_length)
 
-        if isTrain is False:
-            rand = i_start + 720 - (seq_length )
+        #if isTrain is False:
+        #    rand = i_start + 720 - (seq_length)
 
-        sig1 = train_data[rand: rand + seq_length * 2, 1:9]
-        sig2 = train_data[rand+720: rand+720 + seq_length * 2, 1:9]
+        sig1 = train_data[rand: rand + seq_length, 1:9]
+        sig2 = train_data[rand + 92: rand + 92 + seq_length, 1:9]
 
         x1 = sig1[:seq_length, 0]
         x2 = sig1[:seq_length, 1]
