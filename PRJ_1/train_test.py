@@ -23,6 +23,7 @@ print(train_data)
 
 train_data = np.load('train_data_1.npy')
 df_train_data = pd.DataFrame(train_data).sort_values(by=[7,0])
+print(df_train_data[df_train_data[2] < 6])
 
 i = 0
 plt.plot(np.array(df_train_data)[92 * i : 92 * i + 92, 8])

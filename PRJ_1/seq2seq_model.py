@@ -9,7 +9,9 @@ import math
 import pandas as pd
 
 train_data = np.load('train_data_1.npy')
-train_data = np.array(pd.DataFrame(train_data).sort_values(by=[7,0]))
+df_train_data = pd.DataFrame(train_data).sort_values(by=[7,0])
+df_train_data = df_train_data[df_train_data[2] < 6]
+train_data = np.array(df_train_data)
 mean = np.expand_dims(np.average(train_data, axis=1) + 0.00001, axis=1)
 stddev = np.expand_dims(np.std(train_data, axis=1) + 0.00001, axis=1)
 
