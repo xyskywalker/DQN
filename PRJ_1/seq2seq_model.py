@@ -18,6 +18,8 @@ stddev = np.expand_dims(np.std(train_data, axis=1) + 0.00001, axis=1)
 train_data = train_data - mean
 train_data = train_data / stddev
 
+print(train_data.shape)
+
 def generate_x_y_data(isTrain=True, batch_size=3):
     seq_length = 30
 
@@ -25,7 +27,7 @@ def generate_x_y_data(isTrain=True, batch_size=3):
     batch_y = []
     for b_ in range(batch_size):
         #处理哪个分钟段
-        range_i = random.randint(0, 719)
+        range_i = random.randint(0, 718)
         #每段中开始数
         i_start = range_i * 92
         rand = random.randint(i_start, i_start + 92 - seq_length)
