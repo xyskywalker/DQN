@@ -80,9 +80,9 @@ batch_size = 100  # Low value used for live demo purposes - 100 and 1000 would b
 # Output dimension (e.g.: multiple signals at once, tied in time)
 input_dim = sample_x.shape[-1]
 output_dim = sample_y.shape[-1]
-hidden_dim = 100  # Count of hidden neurons in the recurrent units.
+hidden_dim = 50  # Count of hidden neurons in the recurrent units.
 # Number of stacked recurrent cells, on the neural depth axis.
-layers_stacked_count = 5
+layers_stacked_count = 2
 
 # Optmizer:
 learning_rate = 0.007  # Small lr helps not to diverge during training.
