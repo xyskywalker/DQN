@@ -9,8 +9,10 @@ import math
 import pandas as pd
 
 train_data = np.load('train_data_1.npy')
+df_test_data = pd.DataFrame(train_data).sort_values(by=[7,0])
 df_train_data = pd.DataFrame(train_data).sort_values(by=[7,0])
-df_train_data = df_train_data[df_train_data[2] < 6]
+
+df_train_data = df_train_data[df_train_data[2] < 6.0]
 train_data = np.array(df_train_data)
 mean = np.expand_dims(np.average(train_data, axis=1) + 0.00001, axis=1)
 stddev = np.expand_dims(np.std(train_data, axis=1) + 0.00001, axis=1)
@@ -18,7 +20,16 @@ stddev = np.expand_dims(np.std(train_data, axis=1) + 0.00001, axis=1)
 train_data = train_data - mean
 train_data = train_data / stddev
 
-print(train_data.shape)
+df_test_data = df_test_data[df_test_data[2] == 6.0]
+test_data = np.array(df_test_data)
+mean = np.expand_dims(np.average(test_data, axis=1) + 0.00001, axis=1)
+stddev = np.expand_dims(np.std(test_data, axis=1) + 0.00001, axis=1)
+
+test_data = test_data - mean
+test_data = test_data / stddev
+
+print('train_data.shape', train_data.shape)
+print('test_data.shape', test_data.shape)
 
 def generate_x_y_data(isTrain=True, batch_size=3):
     seq_length = 30
@@ -31,12 +42,15 @@ def generate_x_y_data(isTrain=True, batch_size=3):
         #每段中开始数
         i_start = range_i * 92
         rand = random.randint(i_start, i_start + 92 - seq_length)
-
-        #if isTrain is False:
-        #    rand = i_start + 720 - (seq_length)
-
         sig1 = train_data[rand: rand + seq_length, 1:9]
         sig2 = train_data[rand + 92: rand + 92 + seq_length, 1:9]
+
+        if isTrain is False:
+            # 处理哪个分钟段
+            range_i = random.randint(0, 58)
+            # 每段中开始数
+            sig1 = train_data[range_i: range_i + seq_length, 1:9]
+            sig2 = train_data[range_i + 30: range_i + 30 + seq_length, 1:9]
 
         x1 = sig1[:seq_length, 0]
         x2 = sig1[:seq_length, 1]
@@ -88,7 +102,7 @@ layers_stacked_count = 2
 learning_rate = 0.007  # Small lr helps not to diverge during training.
 # How many times we perform a training step (therefore how many times we
 # show a batch).
-nb_iters = 500000
+nb_iters = 100000
 lr_decay = 0.92  # default: 0.9 . Simulated annealing.
 momentum = 0.5  # default: 0.0 . Momentum technique in weights update
 lambda_l2_reg = 0.003  # L2 regularization of weights - avoids overfitting
