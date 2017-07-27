@@ -1,50 +1,58 @@
 import tensorflow as tf  # Version 1.0 or 0.12
 import tensorflow.contrib as tfc
 import numpy as np
+import matplotlib
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import random
 import math
+import pandas as pd
 
 train_data = np.load('train_data_1.npy')
+df_test_data = pd.DataFrame(train_data).sort_values(by=[7,0])
+df_train_data = pd.DataFrame(train_data).sort_values(by=[7,0])
 
-def normalize(X, Y=None):
-    """
-    Normalise X and Y according to the mean and standard deviation of the X values only.
-    """
-    # # It would be possible to normalize with last rather than mean, such as:
-    # lasts = np.expand_dims(X[:, -1, :], axis=1)
-    # assert (lasts[:, :] == X[:, -1, :]).all(), "{}, {}, {}. {}".format(lasts[:, :].shape, X[:, -1, :].shape, lasts[:, :], X[:, -1, :])
-    meanX = np.expand_dims(np.average(X, axis=1) + 0.00001, axis=1)
-    stddevX = np.expand_dims(np.std(X, axis=1) + 0.00001, axis=1)
-    #print (meanX.shape, stddevX.shape)
-    #print (X.shape, Y.shape)
+df_train_data = df_train_data[df_train_data[2] < 6.0]
+train_data = np.array(df_train_data)
+mean = np.average(train_data, axis=0) + 0.00001
+stddev = np.std(train_data, axis=0) + 0.00001
 
-    meanY = np.expand_dims(meanX[:,:,6], axis=1)
-    stddevY = np.expand_dims(stddevX[:,:,6], axis=1)
+train_data = train_data - mean
+train_data = train_data / stddev
 
+df_test_data = df_test_data[df_test_data[2] == 6.0]
+test_data = np.array(df_test_data)
+mean_test = np.average(test_data, axis=0) + 0.00001
+stddev_test = np.std(test_data, axis=0) + 0.00001
 
-    X = X - meanX
-    X = X / (2.5 * stddevX)
-    if Y is not None:
-        # print (meanX.shape, stddevX.shape)
-        # print (X.shape, Y.shape)
-        Y = Y - meanY
-        Y = Y / (2.5 * stddevY)
-        return X, Y
-    return X
+print('mean_test', mean_test.shape)
+
+test_data = test_data - mean_test
+test_data = test_data / stddev_test
+
+print('train_data.shape', train_data.shape)
+print('test_data.shape', test_data.shape)
 
 def generate_x_y_data(isTrain=True, batch_size=3):
     seq_length = 30
 
     batch_x = []
     batch_y = []
-    for _ in range(batch_size):
-        rand = random.randint(0, 66000 - seq_length * 2)
+    for b_ in range(batch_size):
+        #处理哪个分钟段
+        range_i = random.randint(0, 718)
+        #每段中开始数
+        i_start = range_i * 92
+        rand = random.randint(i_start, i_start + 92 - seq_length)
+        sig1 = train_data[rand: rand + seq_length, 1:9]
+        sig2 = train_data[rand + 92: rand + 92 + seq_length, 1:9]
 
         if isTrain is False:
-            rand = random.randint(66000, 66239 - seq_length * 2)
-
-        sig1 = train_data[rand: rand + seq_length * 2, 1:9]
+            # 处理哪个分钟段
+            range_i = random.randint(0, 58)
+            # 每段中开始数
+            sig1 = test_data[range_i: range_i + seq_length, 1:9]
+            sig2 = test_data[range_i + 30: range_i + 30 + seq_length, 1:9]
 
         x1 = sig1[:seq_length, 0]
         x2 = sig1[:seq_length, 1]
@@ -53,7 +61,7 @@ def generate_x_y_data(isTrain=True, batch_size=3):
         x5 = sig1[:seq_length, 4]
         x6 = sig1[:seq_length, 5]
         x8 = sig1[:seq_length, 7]
-        y1 = sig1[seq_length:, 7]
+        y1 = sig2[:seq_length, 7]
 
         #x_ = np.array([x1])
         x_ = np.array([x1, x2, x3, x4, x5, x6, x8])
@@ -70,7 +78,6 @@ def generate_x_y_data(isTrain=True, batch_size=3):
     batch_x = np.array(batch_x).transpose((1, 0, 2))
     batch_y = np.array(batch_y).transpose((1, 0, 2))
     # shape: (seq_length, batch_size, output_dim)
-    batch_x, batch_y = normalize(batch_x, batch_y)
     return batch_x, batch_y
 
 sample_x, sample_y = generate_x_y_data(isTrain=True, batch_size=3)
@@ -84,12 +91,12 @@ print("(seq_length, batch_size, output_dim)")
 # Internal neural network parameters
 # Time series will have the same past and future (to be predicted) lenght.
 seq_length = sample_x.shape[0]
-batch_size = 5  # Low value used for live demo purposes - 100 and 1000 would be possible too, crank that up!
+batch_size = 100  # Low value used for live demo purposes - 100 and 1000 would be possible too, crank that up!
 
 # Output dimension (e.g.: multiple signals at once, tied in time)
 input_dim = sample_x.shape[-1]
 output_dim = sample_y.shape[-1]
-hidden_dim = 12  # Count of hidden neurons in the recurrent units.
+hidden_dim = 100  # Count of hidden neurons in the recurrent units.
 # Number of stacked recurrent cells, on the neural depth axis.
 layers_stacked_count = 2
 
@@ -97,7 +104,7 @@ layers_stacked_count = 2
 learning_rate = 0.007  # Small lr helps not to diverge during training.
 # How many times we perform a training step (therefore how many times we
 # show a batch).
-nb_iters = 100000
+nb_iters = 2000
 lr_decay = 0.92  # default: 0.9 . Simulated annealing.
 momentum = 0.5  # default: 0.0 . Momentum technique in weights update
 lambda_l2_reg = 0.003  # L2 regularization of weights - avoids overfitting
@@ -242,21 +249,48 @@ def test_batch(batch_size):
     return loss_t[0]
 
 
+def test_batch_mape(batch_size):
+    X, Y = generate_x_y_data(isTrain=False, batch_size=batch_size)
+    feed_dict = {enc_inp[t]: X[t] for t in range(seq_length)}
+    outputs = np.array(sess.run([reshaped_outputs], feed_dict)[0])
+
+    outputs *= stddev_test[8]
+    outputs += mean_test[8]
+
+    Y *= stddev_test[8]
+    Y += mean_test[8]
+
+    mape_all = 0.0
+    for j in range(batch_size):
+        mape = 0.0
+        for k in range(output_dim):
+            expected = Y[:, j, k]
+            pred = outputs[:, j, k]
+            mape += sum(abs(pred - expected) / expected) / float(len(expected))
+        mape_all += mape
+    mape_all /= batch_size
+    return mape_all
+
+
 # Training
 train_losses = []
 test_losses = []
 
 sess.run(tf.global_variables_initializer())
+
+train_loss_all = 0.0
 for t in range(nb_iters + 1):
     train_loss = train_batch(batch_size)
     train_losses.append(train_loss)
+    train_loss_all += train_loss
 
     if t % 10 == 0:
         # Tester
-        test_loss = test_batch(batch_size)
+        test_loss = test_batch_mape(batch_size)
         test_losses.append(test_loss)
-        print("Step {}/{}, train loss: {}, \tTEST loss: {}".format(t,
-                                                                   nb_iters, train_loss, test_loss))
+        print("Step {}/{}, train loss: {}, \tTEST MAPE: {}".format(t,
+                                                                   nb_iters, train_loss_all / 10.0, test_loss))
+        train_loss_all = 0.0
 
 print("Fin. train loss: {}, \tTEST loss: {}".format(train_loss, test_loss))
 
@@ -298,7 +332,7 @@ for j in range(nb_predictions):
     plt.figure(figsize=(12, 3))
 
     for k in range(output_dim):
-        past = X[:, j, 7]
+        past = X[:, j, 6]
         expected = Y[:, j, k]
         pred = outputs[:, j, k]
 
