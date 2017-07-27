@@ -24,7 +24,11 @@ print(train_data)
 train_data = np.load('train_data_1.npy')
 df_train_data = pd.DataFrame(train_data).sort_values(by=[7,0])
 
-plt.plot(np.array(df_train_data)[1440 + 720:1440+ 720 + 60,8])
+plt.plot(np.array(df_train_data)[720 : 720 + 31, 8])
+plt.plot(np.array(df_train_data)[720 * 1 : 720 * 1 + 31, 8])
+plt.plot(np.array(df_train_data)[720 * 2 : 720 * 2 + 31, 8])
+plt.plot(np.array(df_train_data)[720 * 3 : 720 * 3 + 31, 8])
+plt.plot(np.array(df_train_data)[720 * 4 : 720 * 4 + 31, 8])
 plt.show()
 
 '''
