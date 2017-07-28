@@ -42,26 +42,29 @@ def generate_x_y_data(isTrain, batch_size, linkIndex):
         range_i = random.randint(0, 718)
         #每段中开始数
         i_start = range_i * 92
-        rand = random.randint(i_start, i_start + 92 - seq_length * 3)
-        sig1 = train_data[rand: rand + seq_length * 2, 1:9]
-        #sig2 = train_data[rand + 92: rand + 92 + seq_length * 2, 1:9]
+        rand = random.randint(i_start, i_start + 92 - seq_length * 2)
+        sig1 = train_data[rand: rand + seq_length,:]
+        sig2 = train_data[rand + 92: rand + 92 + seq_length,:]
 
         if isTrain is False:
-            rand = i_start + 92 - seq_length * 2
-            sig1 = train_data[rand: rand + seq_length * 2, 1:9]
-            #sig2 = train_data[rand + 92: rand + 92 + seq_length * 2, 1:9]
+            rand = i_start + 92 - seq_length
+            sig1 = train_data[rand: rand + seq_length,:]
+            sig2 = train_data[rand + 92: rand + 92 + seq_length,:]
 
-        x1 = sig1[:seq_length, 0]
-        x2 = sig1[:seq_length, 1]
-        x3 = sig1[:seq_length, 2]
-        x4 = sig1[:seq_length, 3]
-        x5 = sig1[:seq_length, 4]
-        x6 = sig1[:seq_length, 5]
-        x8 = sig1[:seq_length, 7]
-        y1 = sig1[seq_length:, 7]
+        x1 = sig1[:seq_length, 1]
+        x2 = sig1[:seq_length, 2]
+        x3 = sig1[:seq_length, 3]
+        x4 = sig1[:seq_length, 4]
+        x5 = sig1[:seq_length, 5]
+        x6 = sig1[:seq_length, 6]
+        x7 = sig1[:seq_length, 7]
+        x8 = sig1[:seq_length, 8] ########
+        x9 = sig1[:seq_length, 9]
+        x10 = sig1[:seq_length, 10]
+        y1 = sig2[:seq_length, 8]
 
         #x_ = np.array([x1])
-        x_ = np.array([x1, x2, x3, x4, x5, x6, x8])
+        x_ = np.array([x1, x2, x3, x4, x5, x6, x7, x8, x9, x10])
         y_ = np.array([y1])
         x_, y_ = x_.T, y_.T
 
@@ -279,7 +282,7 @@ test_losses = []
 sess.run(tf.global_variables_initializer())
 
 train_loss_all = 0.0
-linkIndex = 130
+linkIndex = 130  #78,98,114,42
 mape_all = 0.0
 mape_count = 0
 for t in range(nb_iters + 1):
@@ -297,9 +300,10 @@ for t in range(nb_iters + 1):
                                                                    nb_iters, train_loss_all / 10.0, test_loss, linkIndex))
         train_loss_all = 0.0
 
-    if mape_count % 10 == 0:
+    if mape_count == 10:
         print(' -=10 MAPEs ave=- ', mape_all / 10.0)
         mape_all = 0.0
+        mape_count = 0
 
     linkIndex += 1
     if linkIndex >= 132:
@@ -341,7 +345,7 @@ for j in range(nb_predictions):
     plt.figure(figsize=(12, 3))
 
     for k in range(output_dim):
-        past = X[:, j, 6]
+        past = X[:, j, 7]
         expected = Y[:, j, k]
         pred = outputs[:, j, k]
 
