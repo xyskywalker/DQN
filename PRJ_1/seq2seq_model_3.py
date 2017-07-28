@@ -101,7 +101,7 @@ layers_stacked_count = 2
 learning_rate = 0.007  # Small lr helps not to diverge during training.
 # How many times we perform a training step (therefore how many times we
 # show a batch).
-nb_iters = 20000
+nb_iters = 100000
 lr_decay = 0.92  # default: 0.9 . Simulated annealing.
 momentum = 0.5  # default: 0.0 . Momentum technique in weights update
 lambda_l2_reg = 0.003  # L2 regularization of weights - avoids overfitting
@@ -279,7 +279,9 @@ test_losses = []
 sess.run(tf.global_variables_initializer())
 
 train_loss_all = 0.0
-linkIndex = 0
+linkIndex = 130
+mape_all = 0.0
+mape_count = 0
 for t in range(nb_iters + 1):
     train_loss = train_batch(batch_size, linkIndex=linkIndex)
     train_losses.append(train_loss)
@@ -289,9 +291,15 @@ for t in range(nb_iters + 1):
         # Tester
         test_loss = test_batch_mape(batch_size, linkIndex=linkIndex)
         test_losses.append(test_loss)
-        print("Step {}/{}, train loss: {}, \tTEST MAPE: {}, \tLink Index: {}".format(t,
+        mape_all += test_loss
+        mape_count += 1
+        print("Step {}/{}, train loss: {}, \tTEST MAPE: {}, \t\tLink Index: {}".format(t,
                                                                    nb_iters, train_loss_all / 10.0, test_loss, linkIndex))
         train_loss_all = 0.0
+
+    if mape_count % 10 == 0:
+        print(' -=10 MAPEs ave=- ', mape_all / 10.0)
+        mape_all = 0.0
 
     linkIndex += 1
     if linkIndex >= 132:
