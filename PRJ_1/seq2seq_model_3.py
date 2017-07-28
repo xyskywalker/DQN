@@ -8,51 +8,48 @@ import random
 import math
 import pandas as pd
 
-train_data = np.load('train_data_1.npy')
-df_test_data = pd.DataFrame(train_data).sort_values(by=[7,0])
-df_train_data = pd.DataFrame(train_data).sort_values(by=[7,0])
+train_data_all = np.load('train_data.npy')
+train_data_arr = []
+train_data_mean = []
+train_data_stddev = []
+for train_data in train_data_all:
+    df_test_data = pd.DataFrame(train_data).sort_values(by=[7, 0])
+    df_train_data = pd.DataFrame(train_data).sort_values(by=[7, 0])
+    df_train_data = df_train_data[df_train_data[2] < 6.0]
+    train_data_ = np.array(df_train_data)
+    mean = np.average(train_data_, axis=0) + 0.00001
+    stddev = np.std(train_data_, axis=0) + 0.00001
 
-df_train_data = df_train_data[df_train_data[2] < 6.0]
-train_data = np.array(df_train_data)
-mean = np.average(train_data, axis=0) + 0.00001
-stddev = np.std(train_data, axis=0) + 0.00001
+    train_data_ = train_data_ - mean
+    train_data_ = train_data_ / stddev
 
-train_data = train_data - mean
-train_data = train_data / stddev
+    train_data_arr.append(train_data_)
+    train_data_mean.append(mean)
+    train_data_stddev.append(stddev)
 
-df_test_data = df_test_data[df_test_data[2] == 6.0]
-test_data = np.array(df_test_data)
-mean_test = np.average(test_data, axis=0) + 0.00001
-stddev_test = np.std(test_data, axis=0) + 0.00001
+print('train_data', len(train_data_arr))
+print('train_data.shape', train_data_arr[0].shape)
 
-print('mean_test', mean_test.shape)
-
-test_data = test_data - mean_test
-test_data = test_data / stddev_test
-
-print('train_data.shape', train_data.shape)
-print('test_data.shape', test_data.shape)
-
-def generate_x_y_data(isTrain=True, batch_size=3):
+def generate_x_y_data(isTrain, batch_size, linkIndex):
     seq_length = 30
 
     batch_x = []
     batch_y = []
+    train_data = train_data_arr[linkIndex]
+
     for b_ in range(batch_size):
         #处理哪个分钟段
         range_i = random.randint(0, 718)
         #每段中开始数
         i_start = range_i * 92
-        rand = random.randint(i_start, i_start + 92 - seq_length)
-        sig1 = train_data[rand: rand + seq_length, 1:9]
-        sig2 = train_data[rand + 92: rand + 92 + seq_length, 1:9]
+        rand = random.randint(i_start, i_start + 92 - seq_length * 3)
+        sig1 = train_data[rand: rand + seq_length * 2, 1:9]
+        #sig2 = train_data[rand + 92: rand + 92 + seq_length * 2, 1:9]
 
         if isTrain is False:
-            # 处理哪个分钟段
-            range_i = random.randint(0, 58)
-            # 每段中开始数
-            sig1 = test_data[range_i: range_i + seq_length, 1:9]
-            sig2 = test_data[range_i + 30: range_i + 30 + seq_length, 1:9]
+            rand = i_start + 92 - seq_length * 2
+            sig1 = train_data[rand: rand + seq_length * 2, 1:9]
+            #sig2 = train_data[rand + 92: rand + 92 + seq_length * 2, 1:9]
 
         x1 = sig1[:seq_length, 0]
         x2 = sig1[:seq_length, 1]
@@ -61,7 +58,7 @@ def generate_x_y_data(isTrain=True, batch_size=3):
         x5 = sig1[:seq_length, 4]
         x6 = sig1[:seq_length, 5]
         x8 = sig1[:seq_length, 7]
-        y1 = sig2[:seq_length, 7]
+        y1 = sig1[seq_length:, 7]
 
         #x_ = np.array([x1])
         x_ = np.array([x1, x2, x3, x4, x5, x6, x8])
@@ -80,7 +77,7 @@ def generate_x_y_data(isTrain=True, batch_size=3):
     # shape: (seq_length, batch_size, output_dim)
     return batch_x, batch_y
 
-sample_x, sample_y = generate_x_y_data(isTrain=True, batch_size=3)
+sample_x, sample_y = generate_x_y_data(isTrain=True, batch_size=3, linkIndex=0)
 print("Dimensions of the dataset for 3 X and 3 Y training examples : ")
 print(sample_x.shape)
 print(sample_x)
@@ -104,7 +101,7 @@ layers_stacked_count = 2
 learning_rate = 0.007  # Small lr helps not to diverge during training.
 # How many times we perform a training step (therefore how many times we
 # show a batch).
-nb_iters = 2000
+nb_iters = 20000
 lr_decay = 0.92  # default: 0.9 . Simulated annealing.
 momentum = 0.5  # default: 0.0 . Momentum technique in weights update
 lambda_l2_reg = 0.003  # L2 regularization of weights - avoids overfitting
@@ -223,12 +220,12 @@ with tf.variable_scope('Optimizer'):
 # In[7]:
 
 
-def train_batch(batch_size):
+def train_batch(batch_size, linkIndex):
     """
     Training step that optimizes the weights
     provided some batch_size X and Y examples from the dataset.
     """
-    X, Y = generate_x_y_data(isTrain=True, batch_size=batch_size)
+    X, Y = generate_x_y_data(isTrain=True, batch_size=batch_size, linkIndex=linkIndex)
     feed_dict = {enc_inp[t]: X[t] for t in range(len(enc_inp))}
     feed_dict.update({expected_sparse_output[t]: Y[
                      t] for t in range(len(expected_sparse_output))})
@@ -236,12 +233,12 @@ def train_batch(batch_size):
     return loss_t
 
 
-def test_batch(batch_size):
+def test_batch(batch_size, linkIndex):
     """
     Test step, does NOT optimizes. Weights are frozen by not
     doing sess.run on the train_op.
     """
-    X, Y = generate_x_y_data(isTrain=False, batch_size=batch_size)
+    X, Y = generate_x_y_data(isTrain=False, batch_size=batch_size, linkIndex=linkIndex)
     feed_dict = {enc_inp[t]: X[t] for t in range(len(enc_inp))}
     feed_dict.update({expected_sparse_output[t]: Y[
                      t] for t in range(len(expected_sparse_output))})
@@ -249,10 +246,13 @@ def test_batch(batch_size):
     return loss_t[0]
 
 
-def test_batch_mape(batch_size):
-    X, Y = generate_x_y_data(isTrain=False, batch_size=batch_size)
+def test_batch_mape(batch_size, linkIndex):
+    X, Y = generate_x_y_data(isTrain=False, batch_size=batch_size, linkIndex=linkIndex)
     feed_dict = {enc_inp[t]: X[t] for t in range(seq_length)}
     outputs = np.array(sess.run([reshaped_outputs], feed_dict)[0])
+
+    stddev_test = train_data_stddev[linkIndex]
+    mean_test = train_data_mean[linkIndex]
 
     outputs *= stddev_test[8]
     outputs += mean_test[8]
@@ -279,19 +279,23 @@ test_losses = []
 sess.run(tf.global_variables_initializer())
 
 train_loss_all = 0.0
+linkIndex = 0
 for t in range(nb_iters + 1):
-    train_loss = train_batch(batch_size)
+    train_loss = train_batch(batch_size, linkIndex=linkIndex)
     train_losses.append(train_loss)
     train_loss_all += train_loss
 
     if t % 10 == 0:
         # Tester
-        test_loss = test_batch_mape(batch_size)
+        test_loss = test_batch_mape(batch_size, linkIndex=linkIndex)
         test_losses.append(test_loss)
-        print("Step {}/{}, train loss: {}, \tTEST MAPE: {}".format(t,
-                                                                   nb_iters, train_loss_all / 10.0, test_loss))
+        print("Step {}/{}, train loss: {}, \tTEST MAPE: {}, \tLink Index: {}".format(t,
+                                                                   nb_iters, train_loss_all / 10.0, test_loss, linkIndex))
         train_loss_all = 0.0
 
+    linkIndex += 1
+    if linkIndex >= 132:
+        linkIndex = 0
 # In[8]:
 
 
@@ -321,7 +325,7 @@ plt.show()
 nb_predictions = 5
 print("Let's visualize {} predictions with our signals:".format(nb_predictions))
 
-X, Y = generate_x_y_data(isTrain=False, batch_size=nb_predictions)
+X, Y = generate_x_y_data(isTrain=False, batch_size=nb_predictions, linkIndex=15)
 feed_dict = {enc_inp[t]: X[t] for t in range(seq_length)}
 outputs = np.array(sess.run([reshaped_outputs], feed_dict)[0])
 
