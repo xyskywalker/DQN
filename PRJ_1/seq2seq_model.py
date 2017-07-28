@@ -14,58 +14,60 @@ df_train_data = pd.DataFrame(train_data).sort_values(by=[7,0])
 
 df_train_data = df_train_data[df_train_data[2] < 6.0]
 train_data = np.array(df_train_data)
-mean = np.expand_dims(np.average(train_data, axis=1) + 0.00001, axis=1)
-stddev = np.expand_dims(np.std(train_data, axis=1) + 0.00001, axis=1)
+mean = np.average(train_data, axis=0) + 0.00001
+stddev = np.std(train_data, axis=0) + 0.00001
 
 train_data = train_data - mean
 train_data = train_data / stddev
 
 df_test_data = df_test_data[df_test_data[2] == 6.0]
 test_data = np.array(df_test_data)
-mean = np.expand_dims(np.average(test_data, axis=1) + 0.00001, axis=1)
-stddev = np.expand_dims(np.std(test_data, axis=1) + 0.00001, axis=1)
+mean_test = np.average(test_data, axis=0) + 0.00001
+stddev_test = np.std(test_data, axis=0) + 0.00001
 
-test_data = test_data - mean
-test_data = test_data / stddev
+print('mean_test', mean_test.shape)
+
+test_data = test_data - mean_test
+test_data = test_data / stddev_test
 
 print('train_data.shape', train_data.shape)
 print('test_data.shape', test_data.shape)
 
 def generate_x_y_data(isTrain=True, batch_size=3):
-    seq_length = 30
+    seq_length_x = 30
+    seq_length_y = 30
 
     batch_x = []
     batch_y = []
     for b_ in range(batch_size):
         #处理哪个分钟段
-        range_i = random.randint(0, 718)
+        range_i = random.randint(0, 719 - 60)
         #每段中开始数
         i_start = range_i * 92
-        rand = random.randint(i_start, i_start + 92 - seq_length)
-        sig1 = train_data[rand: rand + seq_length, 1:9]
-        sig2 = train_data[rand + 92: rand + 92 + seq_length, 1:9]
+        rand = random.randint(i_start, i_start + 92 - seq_length_x)
 
-        if isTrain is False:
-            # 处理哪个分钟段
-            range_i = random.randint(0, 58)
-            # 每段中开始数
-            sig1 = test_data[range_i: range_i + seq_length, 1:9]
-            sig2 = test_data[range_i + 30: range_i + 30 + seq_length, 1:9]
+        x_ = np.zeros([10 * seq_length_y, seq_length_x], dtype=np.float32)
+        y_ = np.zeros([seq_length_y, seq_length_x], dtype=np.float32)
 
-        x1 = sig1[:seq_length, 0]
-        x2 = sig1[:seq_length, 1]
-        x3 = sig1[:seq_length, 2]
-        x4 = sig1[:seq_length, 3]
-        x5 = sig1[:seq_length, 4]
-        x6 = sig1[:seq_length, 5]
-        x8 = sig1[:seq_length, 7]
-        y1 = sig2[:seq_length, 7]
+        for r_ in range(seq_length_y):
+            sig1 = train_data[rand + (92*r_): rand + (92*r_) + seq_length_x,:]
+            x_[r_ * 10 + 0] = sig1[:seq_length_x, 1]
+            x_[r_ * 10 + 1] = sig1[:seq_length_x, 2]
+            x_[r_ * 10 + 2] = sig1[:seq_length_x, 3]
+            x_[r_ * 10 + 3] = sig1[:seq_length_x, 4]
+            x_[r_ * 10 + 4] = sig1[:seq_length_x, 5]
+            x_[r_ * 10 + 5] = sig1[:seq_length_x, 6]
+            x_[r_ * 10 + 6] = sig1[:seq_length_x, 7]
+            x_[r_ * 10 + 7] = sig1[:seq_length_x, 8]
+            x_[r_ * 10 + 8] = sig1[:seq_length_x, 9]
+            x_[r_ * 10 + 9] = sig1[:seq_length_x, 10]
 
-        #x_ = np.array([x1])
-        x_ = np.array([x1, x2, x3, x4, x5, x6, x8])
-        y_ = np.array([y1])
+            sig2 = train_data[rand + (seq_length_y * 92) + (92 * r_):
+                        rand + (seq_length_y * 92) + (92 * r_) + seq_length_x, :]
+
+            y_[r_] = sig2[:seq_length_x, 8]
+
         x_, y_ = x_.T, y_.T
-
         batch_x.append(x_)
         batch_y.append(y_)
 
@@ -81,20 +83,18 @@ def generate_x_y_data(isTrain=True, batch_size=3):
 sample_x, sample_y = generate_x_y_data(isTrain=True, batch_size=3)
 print("Dimensions of the dataset for 3 X and 3 Y training examples : ")
 print(sample_x.shape)
-print(sample_x)
 print(sample_y.shape)
-print(sample_y)
 print("(seq_length, batch_size, output_dim)")
 
 # Internal neural network parameters
 # Time series will have the same past and future (to be predicted) lenght.
 seq_length = sample_x.shape[0]
-batch_size = 100  # Low value used for live demo purposes - 100 and 1000 would be possible too, crank that up!
+batch_size = 50  # Low value used for live demo purposes - 100 and 1000 would be possible too, crank that up!
 
 # Output dimension (e.g.: multiple signals at once, tied in time)
 input_dim = sample_x.shape[-1]
 output_dim = sample_y.shape[-1]
-hidden_dim = 100  # Count of hidden neurons in the recurrent units.
+hidden_dim = 35  # Count of hidden neurons in the recurrent units.
 # Number of stacked recurrent cells, on the neural depth axis.
 layers_stacked_count = 2
 
@@ -102,10 +102,10 @@ layers_stacked_count = 2
 learning_rate = 0.007  # Small lr helps not to diverge during training.
 # How many times we perform a training step (therefore how many times we
 # show a batch).
-nb_iters = 500000
+nb_iters = 1000
 lr_decay = 0.92  # default: 0.9 . Simulated annealing.
 momentum = 0.5  # default: 0.0 . Momentum technique in weights update
-lambda_l2_reg = 0.003  # L2 regularization of weights - avoids overfitting
+lambda_l2_reg = 0.001  # L2 regularization of weights - avoids overfitting
 
 
 # ## Definition of the seq2seq neuronal architecture
@@ -247,6 +247,30 @@ def test_batch(batch_size):
     return loss_t[0]
 
 
+def test_batch_mape(batch_size):
+    X, Y = generate_x_y_data(isTrain=False, batch_size=batch_size)
+    feed_dict = {enc_inp[t]: X[t] for t in range(seq_length)}
+    outputs = np.array(sess.run([reshaped_outputs], feed_dict)[0])
+
+    outputs *= stddev_test[8]
+    outputs += mean_test[8]
+
+    Y *= stddev_test[8]
+    Y += mean_test[8]
+
+    mape_all = 0.0
+    for j in range(batch_size):
+        mape = 0.0
+        for k in range(output_dim):
+            expected = Y[:, j, k]
+            pred = outputs[:, j, k]
+            mape += sum(abs(pred - expected) / expected) / float(len(expected))
+
+        mape_all += (mape / float(output_dim))
+    mape_all /= batch_size
+    return mape_all
+
+
 # Training
 train_losses = []
 test_losses = []
@@ -261,14 +285,11 @@ for t in range(nb_iters + 1):
 
     if t % 10 == 0:
         # Tester
-        test_loss = test_batch(batch_size)
+        test_loss = test_batch_mape(batch_size)
         test_losses.append(test_loss)
-        print("Step {}/{}, train loss: {}, \tTEST loss: {}".format(t,
+        print("Step {}/{}, train loss: {}, \tTEST MAPE: {}".format(t,
                                                                    nb_iters, train_loss_all / 10.0, test_loss))
         train_loss_all = 0.0
-
-print("Fin. train loss: {}, \tTEST loss: {}".format(train_loss, test_loss))
-
 
 # In[8]:
 
@@ -302,6 +323,8 @@ print("Let's visualize {} predictions with our signals:".format(nb_predictions))
 X, Y = generate_x_y_data(isTrain=False, batch_size=nb_predictions)
 feed_dict = {enc_inp[t]: X[t] for t in range(seq_length)}
 outputs = np.array(sess.run([reshaped_outputs], feed_dict)[0])
+
+print('outputs', outputs)
 
 for j in range(nb_predictions):
     plt.figure(figsize=(12, 3))

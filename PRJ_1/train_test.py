@@ -8,37 +8,25 @@ import random
 #import tensorflow.contrib as tfc
 import matplotlib.pyplot as plt
 
-'''
-train_data = np.load('train_data.npy')
+arr1 = np.array([
+    [11],
+    [12],
+    [13],
+    [14],
+    [15],
+    [16]
+    ])
 
-print(train_data.shape)
-print(train_data[0])
+arr2 = np.array([
+    [21],
+    [22],
+    [23],
+    [24],
+    [25],
+    [26]
+    ])
 
-np.save('train_data_1.npy',train_data[0])
+x_ = np.array([arr1, arr2])
 
-train_data = np.load('train_data_1.npy')
-print(train_data.shape)
-print(train_data)
-'''
-
-train_data = np.load('train_data_1.npy')
-df_train_data = pd.DataFrame(train_data).sort_values(by=[7,0])
-print(df_train_data[df_train_data[2] < 6])
-
-i = 0
-plt.plot(np.array(df_train_data)[92 * i : 92 * i + 92, 8])
-
-i = 1
-plt.plot(np.array(df_train_data)[92 * i : 92 * i + 92, 8])
-
-
-
-#plt.plot(np.array(df_train_data)[ * 1 : 720 * 1 + 31, 8])
-#plt.plot(np.array(df_train_data)[720 * 2 : 720 * 2 + 31, 8])
-#plt.plot(np.array(df_train_data)[720 * 3 : 720 * 3 + 31, 8])
-#plt.plot(np.array(df_train_data)[720 * 4 : 720 * 4 + 31, 8])
-plt.show()
-
-
-
+print(x_.shape)
 
