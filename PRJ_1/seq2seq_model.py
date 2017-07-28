@@ -51,6 +51,13 @@ def generate_x_y_data(isTrain=True, batch_size=3):
 
         for r_ in range(seq_length_y):
             sig1 = train_data[rand + (92*r_): rand + (92*r_) + seq_length_x,:]
+            sig2 = train_data[rand + (seq_length_y * 92) + (92 * r_):
+                                        rand + (seq_length_y * 92) + (92 * r_) + seq_length_x, :]
+
+            if isTrain is False:
+                sig1 = test_data[30 * r_: 30 * r_ + seq_length_x, :]
+                sig2 = test_data[30 * r_ + (seq_length_y * 30): 30 * r_ + seq_length_x + (seq_length_y * 30), :]
+
             x_[r_ * 10 + 0] = sig1[:seq_length_x, 1]
             x_[r_ * 10 + 1] = sig1[:seq_length_x, 2]
             x_[r_ * 10 + 2] = sig1[:seq_length_x, 3]
@@ -61,9 +68,6 @@ def generate_x_y_data(isTrain=True, batch_size=3):
             x_[r_ * 10 + 7] = sig1[:seq_length_x, 8]
             x_[r_ * 10 + 8] = sig1[:seq_length_x, 9]
             x_[r_ * 10 + 9] = sig1[:seq_length_x, 10]
-
-            sig2 = train_data[rand + (seq_length_y * 92) + (92 * r_):
-                        rand + (seq_length_y * 92) + (92 * r_) + seq_length_x, :]
 
             y_[r_] = sig2[:seq_length_x, 8]
 
@@ -329,8 +333,8 @@ print('outputs', outputs)
 for j in range(nb_predictions):
     plt.figure(figsize=(12, 3))
 
-    for k in range(output_dim):
-        past = X[:, j, 6]
+    for k in range(3):#range(output_dim):
+        past = X[:, j, k * 10 + 7]
         expected = Y[:, j, k]
         pred = outputs[:, j, k]
 
