@@ -13,10 +13,11 @@ train_data_arr = []
 train_data_mean = []
 train_data_stddev = []
 for train_data in train_data_all:
-    df_test_data = pd.DataFrame(train_data).sort_values(by=[7, 0])
+    #df_test_data = pd.DataFrame(train_data).sort_values(by=[7, 0])
     df_train_data = pd.DataFrame(train_data).sort_values(by=[7, 0])
     df_train_data = df_train_data[df_train_data[2] < 6.0]
     train_data_ = np.array(df_train_data)
+    train_data_[:,8] = train_data_[:,9] / train_data_[:,8] # 通过时间折算为速度
     mean = np.average(train_data_, axis=0) + 0.00001
     stddev = np.std(train_data_, axis=0) + 0.00001
 
@@ -59,12 +60,12 @@ def generate_x_y_data(isTrain, batch_size, linkIndex):
         x6 = sig1[:seq_length, 6]
         x7 = sig1[:seq_length, 7]
         x8 = sig1[:seq_length, 8] ########
-        x9 = sig1[:seq_length, 9]
-        x10 = sig1[:seq_length, 10]
+        #x9 = sig1[:seq_length, 9]
+        #x10 = sig1[:seq_length, 10]
         y1 = sig2[:seq_length, 8]
 
         #x_ = np.array([x1])
-        x_ = np.array([x1, x2, x3, x4, x5, x6, x7, x8, x9, x10])
+        x_ = np.array([x1, x2, x3, x4, x5, x6, x7, x8])#, x9, x10])
         y_ = np.array([y1])
         x_, y_ = x_.T, y_.T
 
