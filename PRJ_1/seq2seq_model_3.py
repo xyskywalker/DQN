@@ -12,10 +12,18 @@ train_data_all = np.load('train_data.npy')
 train_data_arr = []
 train_data_mean = []
 train_data_stddev = []
+
+test_data_arr = []
+test_data_mean = []
+test_data_stddev = []
 for train_data in train_data_all:
-    #df_test_data = pd.DataFrame(train_data).sort_values(by=[7, 0])
-    df_train_data = pd.DataFrame(train_data).sort_values(by=[7, 0])
+    df_train_data = pd.DataFrame(train_data).sort_values(by=[0, 7]).copy()
+    df_test_data = pd.DataFrame(train_data).sort_values(by=[0, 7]).copy()
+
     df_train_data = df_train_data[df_train_data[2] < 6.0]
+    df_test_data = df_test_data[df_test_data[2] >= 6.0]
+
+    ##########Train Data##########
     train_data_ = np.array(df_train_data)
     train_data_[:,8] = train_data_[:,9] / train_data_[:,8] # 通过时间折算为速度
     mean = np.average(train_data_, axis=0) + 0.00001
@@ -28,6 +36,19 @@ for train_data in train_data_all:
     train_data_mean.append(mean)
     train_data_stddev.append(stddev)
 
+    ##########Test Data##########
+    test_data_ = np.array(df_test_data)
+    test_data_[:,8] = test_data_[:,9] / test_data_[:,8] # 通过时间折算为速度
+    test_mean = np.average(test_data_, axis=0) + 0.00001
+    test_stddev = np.std(test_data_, axis=0) + 0.00001
+
+    test_data_ = test_data_ - test_mean
+    test_data_ = test_data_ / test_stddev
+
+    test_data_arr.append(test_data_)
+    test_data_mean.append(test_mean)
+    test_data_stddev.append(test_stddev)
+
 print('train_data', len(train_data_arr))
 print('train_data.shape', train_data_arr[0].shape)
 
@@ -37,20 +58,19 @@ def generate_x_y_data(isTrain, batch_size, linkIndex):
     batch_x = []
     batch_y = []
     train_data = train_data_arr[linkIndex]
+    test_data = test_data_arr[linkIndex]
 
     for b_ in range(batch_size):
-        #处理哪个分钟段
-        range_i = random.randint(0, 718)
-        #每段中开始数
-        i_start = range_i * 92
-        rand = random.randint(i_start, i_start + 92 - seq_length * 2)
-        sig1 = train_data[rand: rand + seq_length,:]
-        sig2 = train_data[rand + 92: rand + 92 + seq_length,:]
+        #处理哪天
+        range_i = random.randint(0, 91)
+        #每天中开始数
+        i_start = range_i * 720
+        rand = random.randint(i_start, i_start + 720 - seq_length * 2)
+        sig1 = train_data[rand: rand + seq_length * 2,:]
 
         if isTrain is False:
-            rand = i_start + 92 - seq_length
-            sig1 = train_data[rand: rand + seq_length,:]
-            sig2 = train_data[rand + 92: rand + 92 + seq_length,:]
+            rand = 0
+            sig1 = test_data[rand: rand + seq_length * 2, :]
 
         x1 = sig1[:seq_length, 1]
         x2 = sig1[:seq_length, 2]
@@ -62,7 +82,7 @@ def generate_x_y_data(isTrain, batch_size, linkIndex):
         x8 = sig1[:seq_length, 8] ########
         #x9 = sig1[:seq_length, 9]
         #x10 = sig1[:seq_length, 10]
-        y1 = sig2[:seq_length, 8]
+        y1 = sig1[seq_length:, 8]
 
         #x_ = np.array([x1])
         x_ = np.array([x1, x2, x3, x4, x5, x6, x7, x8])#, x9, x10])
@@ -255,8 +275,8 @@ def test_batch_mape(batch_size, linkIndex):
     feed_dict = {enc_inp[t]: X[t] for t in range(seq_length)}
     outputs = np.array(sess.run([reshaped_outputs], feed_dict)[0])
 
-    stddev_test = train_data_stddev[linkIndex]
-    mean_test = train_data_mean[linkIndex]
+    stddev_test = test_data_stddev[linkIndex]
+    mean_test = test_data_mean[linkIndex]
 
     outputs *= stddev_test[8]
     outputs += mean_test[8]
