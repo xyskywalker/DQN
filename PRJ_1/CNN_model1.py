@@ -184,10 +184,10 @@ with tf.Session() as sess:
                 mse_, train_op_ = sess.run([mse, train_op], feed_dict={X:x, Y:y, keep_prob:1.0})
                 steps += 1
                 mse_all += mse_
-                if steps % 1 == 0:
+                if steps % 10 == 0:
                     print('Steps: ', steps, ' MSE: ', mse_all / 10.0)
                     mse_all = 0.0
-                if steps % 10== 0:
+                if steps % 100== 0:
                     mape = test_batch_mape(pred, sess, X, Y, keep_prob, start_link, 60, start_time_piece)
                     print('MAPE: ', mape)
 
