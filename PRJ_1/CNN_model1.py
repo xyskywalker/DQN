@@ -156,7 +156,7 @@ train_op = optimizer.minimize(mse)
 
 num_epochs = 10
 
-batch_size = 10
+batch_size = 50
 
 # mape计算
 def test_batch_mape(pred, sess, X, Y, keep_prob, start_day, start_time_piece):
