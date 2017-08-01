@@ -142,8 +142,8 @@ keep_prob = tf.placeholder(tf.float32)
 h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob=keep_prob)
 
 # 输出层
-w_out = tf.get_variable('w_actiontype', shape=[1024, 60], initializer=tf.contrib.layers.xavier_initializer())
-b_out = tf.get_variable('b_actiontype', shape=[60], initializer=tf.contrib.layers.xavier_initializer())
+w_out = tf.get_variable('w_actiontype', shape=[1024, 132], initializer=tf.contrib.layers.xavier_initializer())
+b_out = tf.get_variable('b_actiontype', shape=[132], initializer=tf.contrib.layers.xavier_initializer())
 pred = tf.matmul(h_fc1_drop, w_out) + b_out
 
 
