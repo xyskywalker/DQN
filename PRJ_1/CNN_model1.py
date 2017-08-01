@@ -162,12 +162,24 @@ batch_size = 60
 def test_batch_mape(pred, sess, X, Y, keep_prob, start_day, start_time_piece):
     x, y = generate_data(False, batch_size, start_day, start_time_piece)
     outputs = np.array(sess.run(pred, feed_dict={X:x, Y:y, keep_prob:1.0}))
-    y = np.array(y).reshape(-1)
-    outputs = outputs.reshape(-1)
+    #y = np.array(y).reshape(-1)
+    #outputs = outputs.reshape(-1)
 
-    mape = sum(abs(outputs - y) / y) / float(len(y))
+    mape_all = 0.0
+    for i in range(batch_size):
+        test_min = test_data_min[i]
+        test_max = test_data_max[i]
+        o_ = outputs[i]
+        y_ = y[i]
+        o_ *= test_max
+        o_ += test_min
+        y_ *= test_max
+        y_ += test_min
 
-    return mape
+        mape = sum(abs(o_ - y_) / y_) / float(len(y_))
+        mape_all += mape
+
+    return mape_all / batch_size
 
 
 with tf.Session() as sess:
