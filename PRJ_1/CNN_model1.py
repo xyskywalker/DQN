@@ -10,48 +10,46 @@ import pandas as pd
 
 train_data_all = np.load('train_data.npy')
 train_data_arr = []
-train_data_mean = []
-train_data_stddev = []
+train_data_min = []
+train_data_max = []
 
 test_data_arr = []
-test_data_mean = []
-test_data_stddev = []
+test_data_min = []
+test_data_max = []
 for train_data in train_data_all:
     df_train_data = pd.DataFrame(train_data).sort_values(by=[7, 0]).copy()
     df_test_data = pd.DataFrame(train_data).sort_values(by=[7, 0]).copy()
 
+    # 训练数据，不取6月的
     df_train_data = df_train_data[df_train_data[2] < 6.0]
-    df_test_data = df_test_data[df_test_data[2] >= 6.0]
+    # 测试数据只取6点到8点之间的时间片
+    df_test_data = df_test_data[(df_test_data[5] >= 6.0) & (df_test_data[5] <= 8.0)]
 
     ##########Train Data##########
     train_data_ = np.array(df_train_data)
     train_data_[:,8] = train_data_[:,9] / train_data_[:,8] # 通过时间折算为速度
-    min_speed = min(train_data_[:, 8])
-    max_speed = max(train_data_[:, 8])
-    train_data_[:, 8] -= min_speed
-    train_data_[:, 8] /= max_speed
-    #mean = np.average(train_data_, axis=0) + 0.00001
-    #stddev = np.std(train_data_, axis=0) + 0.00001
-
-    #train_data_ = train_data_ - mean
-    #train_data_ = train_data_ / stddev
+    train_min_speed = min(train_data_[:, 8])
+    train_max_speed = max(train_data_[:, 8])
+    train_data_[:, 8] -= train_min_speed
+    train_data_[:, 8] /= train_max_speed
 
     train_data_arr.append(train_data_)
-    #train_data_mean.append(mean)
-    #train_data_stddev.append(stddev)
+    train_data_min.append(train_min_speed)
+    train_data_max.append(train_max_speed)
 
     ##########Test Data##########
     test_data_ = np.array(df_test_data)
     test_data_[:,8] = test_data_[:,9] / test_data_[:,8] # 通过时间折算为速度
-    #test_mean = np.average(test_data_, axis=0) + 0.00001
-    #test_stddev = np.std(test_data_, axis=0) + 0.00001
 
-    #test_data_ = test_data_ - test_mean
-    #test_data_ = test_data_ / test_stddev
+    test_min_speed = min(test_data_[:, 8])
+    test_max_speed = max(test_data_[:, 8])
+    test_data_[:, 8] -= test_min_speed
+    test_data_[:, 8] /= test_max_speed
 
     test_data_arr.append(test_data_)
-    #test_data_mean.append(test_mean)
-    #test_data_stddev.append(test_stddev)
+    test_data_min.append(test_min_speed)
+    test_data_max.append(test_max_speed)
+
 
 print('train_data', len(train_data_arr))
 print('train_data.shape', train_data_arr[0].shape)
@@ -76,14 +74,25 @@ def generate_data(isTrain, batch_size, start_link, start_day, start_time_piece):
         time_piece = start_time_piece + batch
         if time_piece >= 720:
             time_piece -= 720
+        if isTrain is False:
+            if time_piece >= 60:
+                time_piece -= 60
         for i in range(60):
             i_link = start_link + i
             if i_link >= 132:
                 i_link -= 132
-            train_data = train_data_arr[i_link]
-            start_ = time_piece * 92 + start_day
-            end_ = start_ + 60
-            row = train_data[start_: end_, 8]
+
+            if isTrain:
+                train_data = train_data_arr[i_link]
+                start_ = time_piece * 92 + start_day
+                end_ = start_ + 60
+                row = train_data[start_: end_, 8]
+            else:
+                train_data = test_data_arr[i_link]
+                start_ = time_piece * (92 + 30) + start_day
+                end_ = start_ + 60
+                row = train_data[start_: end_, 8]
+
             x_[i] = row
             y_[i] = train_data[end_][8]
         x.append(x_)
@@ -169,7 +178,7 @@ with tf.Session() as sess:
     steps = 0
     mse_all = 0.0
     for start_link in range(132 - batch_size):
-        for start_day in range(92 - 60):
+        for start_day in range(92 - 60 - 1):
             for start_time_piece in range(720 - 60):
                 x, y = generate_data(True, batch_size, start_link, start_day, start_time_piece)
                 mse_, train_op_ = sess.run([mse, train_op], feed_dict={X:x, Y:y, keep_prob:1.0})
@@ -179,7 +188,7 @@ with tf.Session() as sess:
                     print('Steps: ', steps, ' MSE: ', mse_all / 10.0)
                     mse_all = 0.0
                 if steps % 10== 0:
-                    mape = test_batch_mape(pred, sess, X, Y, keep_prob, start_link, start_day, start_time_piece)
+                    mape = test_batch_mape(pred, sess, X, Y, keep_prob, start_link, 60, start_time_piece)
                     print('MAPE: ', mape)
 
 
