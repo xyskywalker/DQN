@@ -156,7 +156,7 @@ train_op = optimizer.minimize(mse)
 
 num_epochs = 10
 
-batch_size = 50
+batch_size = 60
 
 # mape计算
 def test_batch_mape(pred, sess, X, Y, keep_prob, start_day, start_time_piece):
@@ -187,7 +187,7 @@ with tf.Session() as sess:
                     print('Epoch: ', epoch, ' Steps: ', steps, ' MSE: ', mse_all / 10.0)
                     mse_all = 0.0
                 if steps % 100== 0:
-                    mape = test_batch_mape(pred, sess, X, Y, keep_prob, 60, start_time_piece)
+                    mape = test_batch_mape(pred, sess, X, Y, keep_prob, 50, start_time_piece)
                     print('MAPE: ', mape)
 
 
