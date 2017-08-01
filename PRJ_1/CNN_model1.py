@@ -139,16 +139,47 @@ h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob=keep_prob)
 # 输出层
 w_out = tf.get_variable('w_actiontype', shape=[1024, 60], initializer=tf.contrib.layers.xavier_initializer())
 b_out = tf.get_variable('b_actiontype', shape=[60], initializer=tf.contrib.layers.xavier_initializer())
-output = tf.matmul(h_fc1_drop, w_out) + b_out
+pred = tf.matmul(h_fc1_drop, w_out) + b_out
+
+
+# 损失函数，均方差
+mse = tf.reduce_mean(tf.square(pred - Y))
+
+# 优化器
+optimizer = tf.train.AdamOptimizer(learning_rate)
+train_op = optimizer.minimize(mse)
+
+batch_size = 10
+
+# mape计算
+def test_batch_mape(pred, sess, X, Y, keep_prob, start_link, start_day, start_time_piece):
+    x, y = generate_data(False, batch_size, start_link, start_day, start_time_piece)
+    outputs = np.array(sess.run(pred, feed_dict={X:x, Y:y, keep_prob:1.0}))
+    y = np.array(y).reshape(-1)
+    outputs = outputs.reshape(-1)
+
+    mape = sum(abs(outputs - y) / y) / float(len(y))
+
+    return mape
 
 with tf.Session() as sess:
     init = tf.global_variables_initializer()
     sess.run(init)
 
-    x, y = generate_data(True, 60, 10, 10, 10)
+    steps = 0
+    mse_all = 0.0
+    for start_link in range(132 - batch_size):
+        for start_day in range(92 - 60):
+            for start_time_piece in range(720 - 60):
+                x, y = generate_data(True, batch_size, start_link, start_day, start_time_piece)
+                mse_, train_op_ = sess.run([mse, train_op], feed_dict={X:x, Y:y, keep_prob:1.0})
+                steps += 1
+                mse_all += mse_
+                if steps % 1 == 0:
+                    print('Steps: ', steps, ' MSE: ', mse_all / 10.0)
+                    mse_all = 0.0
+                if steps % 10== 0:
+                    mape = test_batch_mape(pred, sess, X, Y, keep_prob, start_link, start_day, start_time_piece)
+                    print('MAPE: ', mape)
 
-    p = sess.run(output, feed_dict={X:x})
-    print_activations(pool1)
-    print(np.array(p))
-    print(np.array(p).shape)
 

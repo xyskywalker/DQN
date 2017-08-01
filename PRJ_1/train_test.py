@@ -28,5 +28,5 @@ arr2 = np.array([
 
 x_ = np.array([arr1, arr2])
 
-print(x_.shape)
+print(x_.reshape(-1))
 
