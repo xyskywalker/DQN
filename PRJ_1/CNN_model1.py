@@ -154,6 +154,8 @@ mse = tf.reduce_mean(tf.square(pred - Y))
 optimizer = tf.train.AdamOptimizer(learning_rate)
 train_op = optimizer.minimize(mse)
 
+num_epochs = 10
+
 batch_size = 10
 
 # mape计算
@@ -174,17 +176,18 @@ with tf.Session() as sess:
 
     steps = 0
     mse_all = 0.0
-    for start_day in range(92 - 60 - 1):
-        for start_time_piece in range(720 - 60):
-            x, y = generate_data(True, batch_size, start_day, start_time_piece)
-            mse_, train_op_ = sess.run([mse, train_op], feed_dict={X:x, Y:y, keep_prob:1.0})
-            steps += 1
-            mse_all += mse_
-            if steps % 10 == 0:
-                print('Steps: ', steps, ' MSE: ', mse_all / 10.0)
-                mse_all = 0.0
-            if steps % 100== 0:
-                mape = test_batch_mape(pred, sess, X, Y, keep_prob, 60, start_time_piece)
-                print('MAPE: ', mape)
+    for epoch in range(num_epochs):
+        for start_day in range(92 - 60 - 1):
+            for start_time_piece in range(720 - batch_size):
+                x, y = generate_data(True, batch_size, start_day, start_time_piece)
+                mse_, train_op_ = sess.run([mse, train_op], feed_dict={X:x, Y:y, keep_prob:1.0})
+                steps += 1
+                mse_all += mse_
+                if steps % 10 == 0:
+                    print('Epoch: ', epoch, ' Steps: ', steps, ' MSE: ', mse_all / 10.0)
+                    mse_all = 0.0
+                if steps % 100== 0:
+                    mape = test_batch_mape(pred, sess, X, Y, keep_prob, 60, start_time_piece)
+                    print('MAPE: ', mape)
 
 
