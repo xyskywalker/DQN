@@ -66,20 +66,18 @@ print('train_data.shape', train_data_arr[0].shape)
 #plt.show()
 
 
-def generate_data(isTrain, batch_size, start_link, start_day, start_time_piece):
+def generate_data(isTrain, batch_size, start_day, start_time_piece):
     x, y = [], []
     for batch in range(batch_size):
-        x_ = np.random.uniform(0, 1, [60, 60])
-        y_ = np.random.uniform(0, 1, [60])
+        x_ = np.random.uniform(0, 1, [132, 60])
+        y_ = np.random.uniform(0, 1, [132])
         time_piece = start_time_piece + batch
         if time_piece >= 720:
             time_piece -= 720
         if isTrain is False:
             time_piece = batch
-        for i in range(60):
-            i_link = start_link + i
-            if i_link >= 132:
-                i_link -= 132
+        for i in range(132):
+            i_link = i
 
             if isTrain:
                 train_data = train_data_arr[i_link]
@@ -104,8 +102,8 @@ def print_activations(t):
 
 learning_rate = 0.001
 
-X = tf.placeholder(shape=[None, 60, 60], dtype=tf.float32)
-X_ = tf.reshape(X, shape=[-1, 60, 60, 1])
+X = tf.placeholder(shape=[None, 132, 60], dtype=tf.float32)
+X_ = tf.reshape(X, shape=[-1, 132, 60, 1])
 Y = tf.placeholder(shape=[None, 60], dtype=tf.float32)
 
 conv1 = tfc.layers.convolution2d(inputs=X_,
@@ -129,14 +127,13 @@ conv3 = tfc.layers.convolution2d(inputs=conv2,
 
 pool1 = tfc.layers.max_pool2d(inputs=conv3, kernel_size=[2, 2], stride=[1, 1], padding='VALID')
 
-
 # 全连接层
 # 权重
-W_fc1 = tf.get_variable('W_fc1', shape=[26 * 26 * 512, 1024], initializer=tf.contrib.layers.xavier_initializer())
+W_fc1 = tf.get_variable('W_fc1', shape=[62 * 26 * 512, 1024], initializer=tf.contrib.layers.xavier_initializer())
 # 偏置
 b_fc1 = tf.get_variable('b_fc1', shape=[1024], initializer=tf.contrib.layers.xavier_initializer())
 # 将池化输出转换为一维
-h_pool1_flat = tf.reshape(pool1, [-1, 26 * 26 * 512])
+h_pool1_flat = tf.reshape(pool1, [-1, 62 * 26 * 512])
 # 激活函数
 h_fc1 = tf.nn.relu(tf.matmul(h_pool1_flat, W_fc1) + b_fc1)
 
@@ -160,8 +157,8 @@ train_op = optimizer.minimize(mse)
 batch_size = 10
 
 # mape计算
-def test_batch_mape(pred, sess, X, Y, keep_prob, start_link, start_day, start_time_piece):
-    x, y = generate_data(False, batch_size, start_link, start_day, start_time_piece)
+def test_batch_mape(pred, sess, X, Y, keep_prob, start_day, start_time_piece):
+    x, y = generate_data(False, batch_size, start_day, start_time_piece)
     outputs = np.array(sess.run(pred, feed_dict={X:x, Y:y, keep_prob:1.0}))
     y = np.array(y).reshape(-1)
     outputs = outputs.reshape(-1)
@@ -170,24 +167,24 @@ def test_batch_mape(pred, sess, X, Y, keep_prob, start_link, start_day, start_ti
 
     return mape
 
+
 with tf.Session() as sess:
     init = tf.global_variables_initializer()
     sess.run(init)
 
     steps = 0
     mse_all = 0.0
-    for start_link in range(132 - batch_size):
-        for start_day in range(92 - 60 - 1):
-            for start_time_piece in range(720 - 60):
-                x, y = generate_data(True, batch_size, start_link, start_day, start_time_piece)
-                mse_, train_op_ = sess.run([mse, train_op], feed_dict={X:x, Y:y, keep_prob:1.0})
-                steps += 1
-                mse_all += mse_
-                if steps % 10 == 0:
-                    print('Steps: ', steps, ' MSE: ', mse_all / 10.0)
-                    mse_all = 0.0
-                if steps % 100== 0:
-                    mape = test_batch_mape(pred, sess, X, Y, keep_prob, start_link, 60, start_time_piece)
-                    print('MAPE: ', mape)
+    for start_day in range(92 - 60 - 1):
+        for start_time_piece in range(720 - 60):
+            x, y = generate_data(True, batch_size, start_day, start_time_piece)
+            mse_, train_op_ = sess.run([mse, train_op], feed_dict={X:x, Y:y, keep_prob:1.0})
+            steps += 1
+            mse_all += mse_
+            if steps % 10 == 0:
+                print('Steps: ', steps, ' MSE: ', mse_all / 10.0)
+                mse_all = 0.0
+            if steps % 100== 0:
+                mape = test_batch_mape(pred, sess, X, Y, keep_prob, 60, start_time_piece)
+                print('MAPE: ', mape)
 
 
