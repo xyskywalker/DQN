@@ -104,7 +104,7 @@ learning_rate = 0.001
 
 X = tf.placeholder(shape=[None, 132, 60], dtype=tf.float32)
 X_ = tf.reshape(X, shape=[-1, 132, 60, 1])
-Y = tf.placeholder(shape=[None, 60], dtype=tf.float32)
+Y = tf.placeholder(shape=[None, 132], dtype=tf.float32)
 
 conv1 = tfc.layers.convolution2d(inputs=X_,
                                  num_outputs=512,
