@@ -75,8 +75,7 @@ def generate_data(isTrain, batch_size, start_link, start_day, start_time_piece):
         if time_piece >= 720:
             time_piece -= 720
         if isTrain is False:
-            if time_piece >= 60:
-                time_piece -= 60
+            time_piece = batch
         for i in range(60):
             i_link = start_link + i
             if i_link >= 132:
