@@ -138,15 +138,19 @@ with tf.Session() as sess:
 
         # Checking
         if (e + 1) % 1000 == 0:
-            check_x, check_y = get_check_data()
-            y_out = np.zeros([1000], dtype=np.int32)
+            check_x, ReferenceSet = get_check_data()
+            PredictionSet = np.zeros([1000], dtype=np.int32)
             for i in range(20):
                 start_i = i * 50
                 end_i = start_i + 50
                 xs = check_x[start_i:end_i]
-                ys = check_y[start_i:end_i]
 
-                out = sess.run(layer_output, feed_dict={envInput: xs, y_input: ys, keep_prob: 1})
-                y_out[start_i:end_i] = out
-            print(y_out)
+                out = sess.run(layer_output, feed_dict={envInput: xs, keep_prob: 1})
+                PredictionSet[start_i:end_i] = out
+
+            cross = float(sum(PredictionSet*ReferenceSet))
+            precision = cross / float(sum(PredictionSet))
+            recall = cross / float(sum(ReferenceSet))
+            f1 = (2.0 * precision * recall) / (precision + recall)
+            print('F1: ', f1)
 

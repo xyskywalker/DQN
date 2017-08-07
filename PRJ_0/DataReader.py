@@ -10,13 +10,17 @@ import datetime
 #csv_train.drop(['交易时间','申报受理时间', '住院开始时间','住院终止时间','操作时间','出院诊断病种名称'], axis=1, inplace=True)
 
 #np.save('arr_train.npy', csv_train)
-print(datetime.datetime.now(), 'Start - Load Data')
+#print(datetime.datetime.now(), 'Start - Load Data')
 #arr_train = np.load('arr_train.npy')
-train_data = np.load('/media/xy/247E930D7E92D740/ShareData/train_data.npy')
-print(datetime.datetime.now(), 'End - Load Data')
-print(train_data.shape)
-print(train_data[0].shape)
-print(train_data[0])
+#train_data = np.load('/media/xy/247E930D7E92D740/ShareData/train_data.npy')
+#print(datetime.datetime.now(), 'End - Load Data')
+#print(train_data.shape)
+#print(train_data[0].shape)
+#print(train_data[0])
+
+arr1 = np.array([1,1,0,0,0,1,0])
+arr2 = np.array([1,1,0,0,0,0,0])
+print(sum(arr1))
 
 #print(arr_train)
 #print(arr_train[0])
