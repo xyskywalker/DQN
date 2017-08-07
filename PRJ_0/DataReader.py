@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 import datetime
 
-
+#len_test = np.load('test_len.npy')
+#print(len_test)
 #print(datetime.datetime.now(), 'Start - Load Data')
 #csv_train = pd.read_csv('df_test.csv').fillna(value=0.0)
 #print(datetime.datetime.now(), 'End - Load Data')
@@ -11,8 +12,8 @@ import datetime
 
 #np.save('arr_test.npy', csv_train)
 print(datetime.datetime.now(), 'Start - Load Data')
-arr_train = np.load('arr_test.npy')
-#train_data = np.load('/media/xy/247E930D7E92D740/ShareData/train_data.npy')
+#arr_train = np.load('arr_train.npy')
+train_data = np.load('/media/xy/247E930D7E92D740/ShareData/train_data.npy')
 print(datetime.datetime.now(), 'End - Load Data')
 
 #df_test = pd.DataFrame(arr_train)
@@ -31,14 +32,14 @@ print(datetime.datetime.now(), 'End - Load Data')
 #print(arr_train[0][3])
 #print(datetime.datetime.now(), 'Start - Load Data')
 df_train = pd.DataFrame(arr_train)
-df_label = pd.read_csv('df_id_test.csv',header=-1, encoding='utf-8')
+df_label = pd.read_csv('df_id_train.csv',header=-1, encoding='utf-8')
 arr_label = np.array(df_label)
 
 train_list = list(range(len(arr_label)))
 
 #print(np.array(df_train[df_train[1]==352121004173837].drop([0, 1], axis=1)).shape)
-arr_len = np.zeros([4000], dtype=np.int32)
-for i in range(4000):
+arr_len = np.zeros([20000], dtype=np.int32)
+for i in range(20000):
     item_arr = np.zeros([1415, 61])
     #print(df_train[df_train[1]==arr_label[i][0]].sort_values(by=0, ascending=True))
     #print(df_train[df_train[1]==arr_label[i][0]].sort_values(by=0, ascending=True).drop([0, 1], axis=1))
@@ -54,7 +55,7 @@ for i in range(4000):
 
 #print(train_list)
 #np.save('/media/xy/247E930D7E92D740/ShareData/test_data.npy', train_list)
-np.save('test_len.npy', arr_len)
+np.save('train_len.npy', arr_len)
 
 #print(datetime.datetime.now(), 'End - Load Data')
 #print(df_train[df_train[1] == 352120001523108])
