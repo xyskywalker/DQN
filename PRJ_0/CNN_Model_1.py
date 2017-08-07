@@ -6,8 +6,8 @@ import tensorflow as tf
 import tensorflow.contrib as tfc
 
 print(datetime.datetime.now(), 'Start - Load Data')
-#train_data = np.load('/media/xy/247E930D7E92D740/ShareData/train_data.npy')
-train_data = np.load('train_data.npy')
+train_data = np.load('/media/xy/247E930D7E92D740/ShareData/train_data.npy')
+#train_data = np.load('train_data.npy')
 df_label = pd.read_csv('df_id_train.csv',header=-1, encoding='utf-8')
 arr_label = np.array(df_label)
 id_list_1 = np.array(df_label[df_label[1] == 1].index)
@@ -51,7 +51,7 @@ x, y = get_data()
 
 def get_check_data():
     x = train_data[19000:]
-    y = arr_label[19000:]
+    y = arr_label[19000:][1]
     return x, y
 
 #print(x)
