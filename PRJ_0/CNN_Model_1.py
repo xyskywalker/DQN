@@ -124,7 +124,7 @@ with tf.Session() as sess:
     init = tf.global_variables_initializer()
     sess.run(init)
     cost_all = 0.0
-    for e in range(10000):
+    for e in range(20000):
         xs, ys = get_data()
         cost_, _ = sess.run([cost, optimizer], feed_dict={envInput: xs, y_input: ys, keep_prob: 0.5})
         cost_all += cost_
@@ -156,18 +156,18 @@ with tf.Session() as sess:
             print('-= F1 =-: ', f1)
 
 
-print('Start forecast...')
+    print('Start forecast...')
 
-test_data = np.load('/media/xy/247E930D7E92D740/ShareData/test_data.npy')
+    test_data = np.load('/media/xy/247E930D7E92D740/ShareData/test_data.npy')
 
-PredictionSet = np.zeros([4000], dtype=np.int32)
-for i in range(80):
-    start_i = i * 50
-    end_i = start_i + 50
-    xs = test_data[start_i:end_i]
+    PredictionSet = np.zeros([4000], dtype=np.int32)
+    for i in range(80):
+        start_i = i * 50
+        end_i = start_i + 50
+        xs = test_data[start_i:end_i]
 
-    out = sess.run(layer_output, feed_dict={envInput: xs, keep_prob: 1})
-    PredictionSet[start_i:end_i] = out
+        out = sess.run(layer_output, feed_dict={envInput: xs, keep_prob: 1})
+        PredictionSet[start_i:end_i] = out
 
-for label in PredictionSet:
-    print(label)
+    for label in PredictionSet:
+        print(label)
