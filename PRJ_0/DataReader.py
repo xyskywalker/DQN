@@ -12,8 +12,8 @@ import datetime
 
 #np.save('arr_test.npy', csv_train)
 print(datetime.datetime.now(), 'Start - Load Data')
-#arr_train = np.load('arr_train.npy')
-train_data = np.load('/media/xy/247E930D7E92D740/ShareData/train_data.npy')
+arr_train = np.load('arr_train.npy')
+#train_data = np.load('/media/xy/247E930D7E92D740/ShareData/train_data.npy')
 print(datetime.datetime.now(), 'End - Load Data')
 
 #df_test = pd.DataFrame(arr_train)
@@ -38,13 +38,15 @@ arr_label = np.array(df_label)
 train_list = list(range(len(arr_label)))
 
 #print(np.array(df_train[df_train[1]==352121004173837].drop([0, 1], axis=1)).shape)
+'''
 arr_len = np.zeros([20000], dtype=np.int32)
 for i in range(20000):
     item_arr = np.zeros([1415, 61])
     #print(df_train[df_train[1]==arr_label[i][0]].sort_values(by=0, ascending=True))
     #print(df_train[df_train[1]==arr_label[i][0]].sort_values(by=0, ascending=True).drop([0, 1], axis=1))
-    item_temp = np.array(df_train[df_train[1]==arr_label[i][0]].sort_values(by=0, ascending=True).drop([0, 1], axis=1))
-    item_arr[0:len(item_temp), ] = item_temp
+    #item_temp = np.array(df_train[df_train[1]==arr_label[i][0]].sort_values(by=0, ascending=True).drop([0, 1], axis=1))
+    #item_arr[0:len(item_temp), ] = item_temp
+    item_temp = np.array(df_train[df_train[1] == arr_label[i][0]])
     arr_len[i] = len(item_temp)
     #print(item_temp)
 
@@ -56,7 +58,10 @@ for i in range(20000):
 #print(train_list)
 #np.save('/media/xy/247E930D7E92D740/ShareData/test_data.npy', train_list)
 np.save('train_len.npy', arr_len)
-
+'''
+arr_len = np.array(df_train.groupby(by=1)[1].count())
+print(arr_len)
+np.save('train_len.npy', arr_len)
 #print(datetime.datetime.now(), 'End - Load Data')
 #print(df_train[df_train[1] == 352120001523108])
 
