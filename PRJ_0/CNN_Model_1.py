@@ -153,5 +153,21 @@ with tf.Session() as sess:
             precision = cross / float(sum(PredictionSet))
             recall = cross / float(sum(ReferenceSet))
             f1 = (2.0 * precision * recall) / (precision + recall)
-            print('F1: ', f1)
+            print('-= F1 =-: ', f1)
 
+
+print('Start forecast...')
+
+test_data = np.load('/media/xy/247E930D7E92D740/ShareData/test_data.npy')
+
+PredictionSet = np.zeros([4000], dtype=np.int32)
+for i in range(80):
+    start_i = i * 50
+    end_i = start_i + 50
+    xs = test_data[start_i:end_i]
+
+    out = sess.run(layer_output, feed_dict={envInput: xs, keep_prob: 1})
+    PredictionSet[start_i:end_i] = out
+
+for label in PredictionSet:
+    print(label)
