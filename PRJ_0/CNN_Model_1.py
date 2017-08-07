@@ -22,8 +22,8 @@ def get_data(batch_size = 50, is_train = True):
     # 1, 0的数据各随机获取 batch_size/2
     half_batch = int(batch_size/2)
     if is_train:
-        list_1 = list(id_list_1[0:900])
-        list_0 = list(id_list_0[0:17100])
+        list_1 = list(id_list_1[:950])
+        list_0 = list(id_list_0[:18500])
     else:
         list_1 = list(id_list_1[900:])
         list_0 = list(id_list_0[17100:])
@@ -130,10 +130,10 @@ with tf.Session() as sess:
         cost_all += cost_
         if e % 100 == 0:
             print('Steps: ', e, 'Cost:', cost_all / 100)
-            xs, ys = get_data(batch_size=50, is_train=False)
-            cost_, _ = sess.run([cost, optimizer],
-                                                   feed_dict={envInput: xs, y_input: ys, keep_prob: 1})
-            print('Test Cost:', cost_)
+            #xs, ys = get_data(batch_size=50, is_train=False)
+            #cost_, _ = sess.run([cost, optimizer],
+            #                                       feed_dict={envInput: xs, y_input: ys, keep_prob: 1})
+            #print('Test Cost:', cost_)
             cost_all = 0.0
 
         # Checking
