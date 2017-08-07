@@ -128,8 +128,8 @@ with tf.Session() as sess:
         xs, ys = get_data()
         cost_, _ = sess.run([cost, optimizer], feed_dict={envInput: xs, y_input: ys, keep_prob: 0.5})
         cost_all += cost_
-        if e % 10 == 0:
-            print('Steps: ', e, 'Cost:', cost_all / 10)
+        if e % 100 == 0:
+            print('Steps: ', e, 'Cost:', cost_all / 100)
             xs, ys = get_data(batch_size=50, is_train=False)
             cost_, _ = sess.run([cost, optimizer],
                                                    feed_dict={envInput: xs, y_input: ys, keep_prob: 1})
@@ -137,7 +137,7 @@ with tf.Session() as sess:
             cost_all = 0.0
 
         # Checking
-        if (e + 1) % 10 == 0:
+        if (e + 1) % 1000 == 0:
             check_x, ReferenceSet = get_check_data()
 
             PredictionSet = np.zeros([1000], dtype=np.int32)
