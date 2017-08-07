@@ -9,7 +9,7 @@ print(datetime.datetime.now(), 'Start - Load Data')
 #train_data = np.load('/media/xy/247E930D7E92D740/ShareData/train_data.npy')
 train_data = np.load('train_data.npy')
 df_label = pd.read_csv('df_id_train.csv',header=-1, encoding='utf-8')
-#arr_label = np.array(df_label)
+arr_label = np.array(df_label)
 id_list_1 = np.array(df_label[df_label[1] == 1].index)
 id_list_0 = np.array(df_label[df_label[1] == 0].index)
 print(datetime.datetime.now(), 'End - Load Data')
@@ -48,6 +48,12 @@ def get_data(batch_size = 50, is_train = True):
     return train_x, train_y
 
 x, y = get_data()
+
+def get_check_data():
+    x = train_data[19000:]
+    y = arr_label[19000:]
+    return x, y
+
 #print(x)
 #print(y)
 
@@ -101,14 +107,16 @@ h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob=keep_prob)
 # 输出层-动作类型
 w_actiontype = tf.get_variable('w_actiontype', shape=[1024, 2], initializer=tf.contrib.layers.xavier_initializer())
 b_actiontype = tf.get_variable('b_actiontype', shape=[2], initializer=tf.contrib.layers.xavier_initializer())
-layer_actiontype_p = tf.matmul(h_fc1_drop, w_actiontype) + b_actiontype
+layer_p = tf.matmul(h_fc1_drop, w_actiontype) + b_actiontype
+layer_softmax = tf.nn.softmax(layer_p)
+layer_output = tf.argmax(layer_softmax, 1)
 
 y_input = tf.placeholder(shape=[None], dtype=tf.int32)
 y_ = tf.reshape(y_input, shape=[-1, 1])
 y_onehot = tf.one_hot(y_, depth=2)
 
 # 成本函数 reduce mean 降维->平均值
-cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=layer_actiontype_p, labels=y_onehot))
+cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=layer_p, labels=y_onehot))
 # 使用了Adam算法来最小化成本函数
 optimizer = tf.train.AdamOptimizer(learning_rate).minimize(cost)
 
@@ -127,4 +135,18 @@ with tf.Session() as sess:
                                                    feed_dict={envInput: xs, y_input: ys, keep_prob: 1})
             print('Test Cost:', cost_)
             cost_all = 0.0
+
+        # Checking
+        if (e + 1) % 1000 == 0:
+            check_x, check_y = get_check_data()
+            y_out = np.zeros([1000], dtype=np.int32)
+            for i in range(20):
+                start_i = i * 50
+                end_i = start_i + 50
+                xs = check_x[start_i:end_i]
+                ys = check_y[start_i:end_i]
+
+                out = sess.run(layer_output, feed_dict={envInput: xs, y_input: ys, keep_prob: 1})
+                y_out[start_i:end_i] = out
+            print(y_out)
 
