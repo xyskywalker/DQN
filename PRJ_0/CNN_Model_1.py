@@ -22,11 +22,11 @@ def get_data(batch_size = 50, is_train = True):
     # 1, 0的数据各随机获取 batch_size/2
     half_batch = int(batch_size/2)
     if is_train:
-        list_1 = list(id_list_1[:900])
-        list_0 = list(id_list_0[:17100])
+        list_1 = list(id_list_1[:950])
+        list_0 = list(id_list_0[:18000])
     else:
-        list_1 = list(id_list_1[900:])
-        list_0 = list(id_list_0[17100:])
+        list_1 = list(id_list_1[950:])
+        list_0 = list(id_list_0[18000:])
     id_1 = random.sample(list_1, half_batch)
     id_0 = random.sample(list_0, half_batch)
     train_x = np.zeros([50, 1415, 61], dtype=np.float32)
@@ -124,9 +124,9 @@ with tf.Session() as sess:
     init = tf.global_variables_initializer()
     sess.run(init)
     cost_all = 0.0
-    for e in range(20000):
+    for e in range(50000):
         xs, ys = get_data()
-        cost_, _ = sess.run([cost, optimizer], feed_dict={envInput: xs, y_input: ys, keep_prob: 0.5})
+        cost_, _ = sess.run([cost, optimizer], feed_dict={envInput: xs, y_input: ys, keep_prob: 0.3})
         cost_all += cost_
         if e % 100 == 0:
             print('Steps: ', e, 'Cost:', cost_all / 100)
@@ -168,5 +168,6 @@ with tf.Session() as sess:
         out = sess.run(layer_output, feed_dict={envInput: xs, keep_prob: 1})
         PredictionSet[start_i:end_i] = out
 
-    for label in PredictionSet:
-        print(label)
+    #for label in PredictionSet:
+    #    print(label)
+    print(PredictionSet)
