@@ -51,7 +51,7 @@ x, y = get_data()
 
 def get_check_data():
     x = train_data[19000:]
-    y = arr_label[19000:][1]
+    y = arr_label[19000:,1]
     return x, y
 
 #print(x)
@@ -137,8 +137,9 @@ with tf.Session() as sess:
             cost_all = 0.0
 
         # Checking
-        if (e + 1) % 1000 == 0:
+        if (e + 1) % 10 == 0:
             check_x, ReferenceSet = get_check_data()
+
             PredictionSet = np.zeros([1000], dtype=np.int32)
             for i in range(20):
                 start_i = i * 50
