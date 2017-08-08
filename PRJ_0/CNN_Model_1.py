@@ -12,6 +12,9 @@ df_label = pd.read_csv('df_id_train.csv',header=-1, encoding='utf-8')
 arr_label = np.array(df_label)
 id_list_1 = np.array(df_label[df_label[1] == 1].index)
 id_list_0 = np.array(df_label[df_label[1] == 0].index)
+
+train_len = np.load('train_len.npy')
+
 print(datetime.datetime.now(), 'End - Load Data')
 
 #print(train_data.shape) #(20000, 1415, 61)
@@ -37,15 +40,28 @@ def get_data(batch_size = 50, is_train = True):
     i_0 = 0
     for i in range(batch_size):
         if i in random_ids:
-            train_x[i] = train_data[id_1[i_1]]
+            train_x[i] = pre_data(id_1[i_1])
             train_y[i] = 1
             i_1 += 1
         else:
-            train_x[i] = train_data[id_0[i_0]]
+            train_x[i] = pre_data(id_0[i_0])
             train_y[i] = 0
             i_0 += 1
 
     return train_x, train_y
+
+
+def pre_data(index_id):
+    data = train_data[index_id]
+    data_len = train_len[index_id]
+    data_new = np.zeros(data.shape, dtype=data.dtype)
+    start_index = random.randint(0, 1415 - data_len)
+    data_new[start_index:start_index+data_len,] = data[0:data_len]
+    data_min = np.min(data_new, axis=0)
+    data_max = np.max(data_new, axis=0) + 0.000001
+    data_new -= data_min
+    data_new /= data_max
+    return data_new
 
 x, y = get_data()
 
@@ -57,6 +73,7 @@ def get_check_data():
 #print(x)
 #print(y)
 
+print(pre_data(5))
 
 def print_activations(t):
     print(t.op.name, '' , t.get_shape().as_list())

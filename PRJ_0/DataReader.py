@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 import datetime
-
+'''
 #len_test = np.load('test_len.npy')
 #print(len_test)
 #print(datetime.datetime.now(), 'Start - Load Data')
@@ -38,7 +38,7 @@ arr_label = np.array(df_label)
 train_list = list(range(len(arr_label)))
 
 #print(np.array(df_train[df_train[1]==352121004173837].drop([0, 1], axis=1)).shape)
-'''
+
 arr_len = np.zeros([20000], dtype=np.int32)
 for i in range(20000):
     item_arr = np.zeros([1415, 61])
@@ -58,10 +58,11 @@ for i in range(20000):
 #print(train_list)
 #np.save('/media/xy/247E930D7E92D740/ShareData/test_data.npy', train_list)
 np.save('train_len.npy', arr_len)
-'''
+
 arr_len = np.array(df_train.groupby(by=1)[1].count())
 print(arr_len)
 np.save('train_len.npy', arr_len)
+'''
 #print(datetime.datetime.now(), 'End - Load Data')
 #print(df_train[df_train[1] == 352120001523108])
 
@@ -74,3 +75,15 @@ np.save('train_len.npy', arr_len)
 
 #print(fee_detail.head())
 
+arr = np.array([
+    [1,1,1,1,1],
+    [2,2,2,2,2],
+    [3,3,3,3,3]
+])
+
+max_arr = np.max(arr, axis=0) + 0.00001
+
+print(max_arr)
+
+len = np.load('train_len.npy')
+print(len[2])
