@@ -90,34 +90,44 @@ envIn = tf.reshape(envInput, shape=[-1, env_len, env_d, 1])
 
 conv1 = tfc.layers.convolution2d(inputs=envIn,
                                  num_outputs=512,
-                                 kernel_size=[12, 3],
-                                 stride=[8, 2],
+                                 kernel_size=[3, 3],
+                                 stride=[3, 1],
                                  padding='VALID',
                                  biases_initializer=None)
-conv2 = tfc.layers.convolution2d(inputs=conv1,
+pool1 = tfc.layers.max_pool2d(inputs=conv1, kernel_size=[2, 2], stride=[1, 1], padding='VALID')
+
+conv2 = tfc.layers.convolution2d(inputs=pool1,
                                  num_outputs=512,
-                                 kernel_size=[8, 2],
-                                 stride=[8, 2],
+                                 kernel_size=[3, 3],
+                                 stride=[3, 1],
                                  padding='VALID',
                                  biases_initializer=None)
-conv3 = tfc.layers.convolution2d(inputs=conv2,
+pool2 = tfc.layers.max_pool2d(inputs=conv2, kernel_size=[2, 2], stride=[1, 1], padding='VALID')
+
+conv3 = tfc.layers.convolution2d(inputs=pool2,
+                                 num_outputs=256,
+                                 kernel_size=[3, 3],
+                                 stride=[3, 1],
+                                 padding='VALID',
+                                 biases_initializer=None)
+pool3 = tfc.layers.max_pool2d(inputs=conv3, kernel_size=[2, 2], stride=[1, 1], padding='VALID')
+
+conv4 = tfc.layers.convolution2d(inputs=pool3,
                                  num_outputs=256,
                                  kernel_size=[3, 3],
                                  stride=[1, 1],
                                  padding='VALID',
                                  biases_initializer=None)
-conv4 = tfc.layers.convolution2d(inputs=conv3,
-                                 num_outputs=256,
-                                 kernel_size=[3, 3],
-                                 stride=[1, 1],
-                                 padding='VALID',
-                                 biases_initializer=None)
+pool4 = tfc.layers.max_pool2d(inputs=conv4, kernel_size=[2, 2], stride=[1, 1], padding='VALID')
 
 
-pool1 = tfc.layers.max_pool2d(inputs=conv4, kernel_size=[3, 3], stride=[1, 1], padding='VALID')
+
 
 print_activations(conv1)
 print_activations(conv2)
 print_activations(conv3)
 print_activations(conv4)
 print_activations(pool1)
+print_activations(pool2)
+print_activations(pool3)
+print_activations(pool4)
