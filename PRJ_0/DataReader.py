@@ -115,11 +115,18 @@ pool3 = tfc.layers.max_pool2d(inputs=conv3, kernel_size=[2, 2], stride=[1, 1], p
 conv4 = tfc.layers.convolution2d(inputs=pool3,
                                  num_outputs=256,
                                  kernel_size=[3, 3],
-                                 stride=[1, 1],
+                                 stride=[2, 2],
                                  padding='VALID',
                                  biases_initializer=None)
 pool4 = tfc.layers.max_pool2d(inputs=conv4, kernel_size=[2, 2], stride=[1, 1], padding='VALID')
 
+conv5 = tfc.layers.convolution2d(inputs=pool4,
+                                 num_outputs=128,
+                                 kernel_size=[3, 3],
+                                 stride=[2, 2],
+                                 padding='VALID',
+                                 biases_initializer=None)
+pool5 = tfc.layers.max_pool2d(inputs=conv5, kernel_size=[2, 2], stride=[1, 1], padding='VALID')
 
 
 
@@ -127,7 +134,9 @@ print_activations(conv1)
 print_activations(conv2)
 print_activations(conv3)
 print_activations(conv4)
+print_activations(conv5)
 print_activations(pool1)
 print_activations(pool2)
 print_activations(pool3)
 print_activations(pool4)
+print_activations(pool5)

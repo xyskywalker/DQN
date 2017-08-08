@@ -112,18 +112,26 @@ pool3 = tfc.layers.max_pool2d(inputs=conv3, kernel_size=[2, 2], stride=[1, 1], p
 conv4 = tfc.layers.convolution2d(inputs=pool3,
                                  num_outputs=256,
                                  kernel_size=[3, 3],
-                                 stride=[1, 1],
+                                 stride=[2, 2],
                                  padding='VALID',
                                  biases_initializer=None)
 pool4 = tfc.layers.max_pool2d(inputs=conv4, kernel_size=[2, 2], stride=[1, 1], padding='VALID')
 
+conv5 = tfc.layers.convolution2d(inputs=pool4,
+                                 num_outputs=128,
+                                 kernel_size=[3, 3],
+                                 stride=[2, 2],
+                                 padding='VALID',
+                                 biases_initializer=None)
+pool5 = tfc.layers.max_pool2d(inputs=conv5, kernel_size=[2, 2], stride=[1, 1], padding='VALID')
+
 # 全连接层
 # 权重
-W_fc1 = tf.get_variable('W_fc1', shape=[47*49*256, 1024], initializer=tf.contrib.layers.xavier_initializer())
+W_fc1 = tf.get_variable('W_fc1', shape=[10*10*128, 1024], initializer=tf.contrib.layers.xavier_initializer())
 # 偏置
 b_fc1 = tf.get_variable('b_fc1', shape=[1024], initializer=tf.contrib.layers.xavier_initializer())
 # 将池化输出转换为一维
-h_pool1_flat = tf.reshape(pool4, [-1, 47*49*256])
+h_pool1_flat = tf.reshape(pool5, [-1, 10*10*128])
 # 激活函数
 h_fc1 = tf.nn.relu(tf.matmul(h_pool1_flat, W_fc1) + b_fc1)
 
