@@ -2,6 +2,8 @@
 import numpy as np
 import pandas as pd
 import datetime
+import tensorflow as tf
+import tensorflow.contrib as tfc
 '''
 #len_test = np.load('test_len.npy')
 #print(len_test)
@@ -75,15 +77,47 @@ np.save('train_len.npy', arr_len)
 
 #print(fee_detail.head())
 
-arr = np.array([
-    [1,1,1,1,1],
-    [2,2,2,2,2],
-    [3,3,3,3,3]
-])
 
-max_arr = np.max(arr, axis=0) + 0.00001
+def print_activations(t):
+    print(t.op.name, '' , t.get_shape().as_list())
 
-print(max_arr)
+env_len = 1415
+env_d = 61
+learning_rate = 0.0001
 
-len = np.load('train_len.npy')
-print(len[2])
+envInput = tf.placeholder(shape=[None, env_len, env_d], dtype=tf.float32)
+envIn = tf.reshape(envInput, shape=[-1, env_len, env_d, 1])
+
+conv1 = tfc.layers.convolution2d(inputs=envIn,
+                                 num_outputs=512,
+                                 kernel_size=[12, 3],
+                                 stride=[8, 2],
+                                 padding='VALID',
+                                 biases_initializer=None)
+conv2 = tfc.layers.convolution2d(inputs=conv1,
+                                 num_outputs=512,
+                                 kernel_size=[8, 2],
+                                 stride=[8, 2],
+                                 padding='VALID',
+                                 biases_initializer=None)
+conv3 = tfc.layers.convolution2d(inputs=conv2,
+                                 num_outputs=256,
+                                 kernel_size=[3, 3],
+                                 stride=[1, 1],
+                                 padding='VALID',
+                                 biases_initializer=None)
+conv4 = tfc.layers.convolution2d(inputs=conv3,
+                                 num_outputs=256,
+                                 kernel_size=[3, 3],
+                                 stride=[1, 1],
+                                 padding='VALID',
+                                 biases_initializer=None)
+
+
+pool1 = tfc.layers.max_pool2d(inputs=conv4, kernel_size=[3, 3], stride=[1, 1], padding='VALID')
+
+print_activations(conv1)
+print_activations(conv2)
+print_activations(conv3)
+print_activations(conv4)
+print_activations(pool1)

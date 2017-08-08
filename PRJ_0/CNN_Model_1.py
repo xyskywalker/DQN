@@ -73,7 +73,7 @@ def get_check_data():
 #print(x)
 #print(y)
 
-print(pre_data(5))
+#print(pre_data(5))
 
 def print_activations(t):
     print(t.op.name, '' , t.get_shape().as_list())
@@ -86,13 +86,13 @@ envInput = tf.placeholder(shape=[None, env_len, env_d], dtype=tf.float32)
 envIn = tf.reshape(envInput, shape=[-1, env_len, env_d, 1])
 
 conv1 = tfc.layers.convolution2d(inputs=envIn,
-                                 num_outputs=32,
+                                 num_outputs=512,
                                  kernel_size=[12, 3],
                                  stride=[8, 2],
                                  padding='VALID',
                                  biases_initializer=None)
 conv2 = tfc.layers.convolution2d(inputs=conv1,
-                                 num_outputs=64,
+                                 num_outputs=512,
                                  kernel_size=[8, 2],
                                  stride=[8, 2],
                                  padding='VALID',
@@ -103,13 +103,19 @@ conv3 = tfc.layers.convolution2d(inputs=conv2,
                                  stride=[1, 1],
                                  padding='VALID',
                                  biases_initializer=None)
+conv4 = tfc.layers.convolution2d(inputs=conv3,
+                                 num_outputs=256,
+                                 kernel_size=[3, 3],
+                                 stride=[1, 1],
+                                 padding='VALID',
+                                 biases_initializer=None)
 
 
-pool1 = tfc.layers.max_pool2d(inputs=conv3, kernel_size=[3, 3], stride=[1, 1], padding='VALID')
+pool1 = tfc.layers.max_pool2d(inputs=conv4, kernel_size=[3, 3], stride=[1, 1], padding='VALID')
 
 # 全连接层
 # 权重
-W_fc1 = tf.get_variable('W_fc1', shape=[18*11*256, 1024], initializer=tf.contrib.layers.xavier_initializer())
+W_fc1 = tf.get_variable('W_fc1', shape=[16*9*256, 1024], initializer=tf.contrib.layers.xavier_initializer())
 # 偏置
 b_fc1 = tf.get_variable('b_fc1', shape=[1024], initializer=tf.contrib.layers.xavier_initializer())
 # 将池化输出转换为一维
