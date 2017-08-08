@@ -123,7 +123,7 @@ W_fc1 = tf.get_variable('W_fc1', shape=[17*12*64, 1024], initializer=tf.contrib.
 # 偏置
 b_fc1 = tf.get_variable('b_fc1', shape=[1024], initializer=tf.contrib.layers.xavier_initializer())
 # 将池化输出转换为一维
-h_pool1_flat = tf.reshape(pool, [-1, 17*12*128])
+h_pool1_flat = tf.reshape(pool, [-1, 17*12*64])
 # 激活函数
 h_fc1 = tf.nn.relu(tf.matmul(h_pool1_flat, W_fc1) + b_fc1)
 
